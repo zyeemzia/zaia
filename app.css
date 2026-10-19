@@ -336,7 +336,8 @@ a.sg-node:hover circle, a.sg-layer:hover rect { stroke-width: 3.5; }
 /* keep wide diagrams and tables scrolling inside their own box on small screens */
 .blocks { grid-template-columns: minmax(0, 1fr); }
 .blocks > *, .lesson, .case-b, .scenario, .quiz, .exam-wrap > * { min-width: 0; }
-.b-text, .callout, .keypoints, .term, .fw-card p { overflow-wrap: anywhere; }
+.b-text, .callout, .keypoints, .term, .fw-card p, .q-text, .opt, .q-result, .steps li, .cmp-col li, .scn, .case { overflow-wrap: anywhere; }
+.quiz-top > * { min-width: 0; }
 
 /* ---------- CLI labs ---------- */
 .cli-win { border-radius: 14px; overflow: hidden; border: 1px solid #1f2633; background: #0d1117; box-shadow: 0 10px 24px -16px rgba(0,0,0,.6); }
