@@ -1,0 +1,29 @@
+/* ZAIA — "neural blueprint": graphite ink, electric violet, signal cyan; circuit dot-grid motif. */
+:root {
+  --bg: #f3f4fa; --surface: #ffffff; --surface-2: #e8eaf4; --ink: #151729; --ink-2: #4c5070; --ink-3: #868aa6; --line: #d9dbea;
+  --accent: #5b3df5; --accent-ink: #ffffff; --accent-soft: #ebe6ff; --accent-2: #0b8fae; --accent-2-soft: #dcf2f7;
+  --good: #1d7a52; --good-soft: #dcf2e6; --bad: #b3263a; --bad-soft: #f9e0e4; --warn: #b77800; --warn-soft: #fbefd3;
+  --hero-bg: #0f1020; --hero-ink: #f1f2fb; --hero-ink-2: #a9adcc; --hero-accent: #9d8cff;
+  --motif: radial-gradient(circle at 1px 1px, rgba(157,140,255,.35) 1px, transparent 1.6px) 0 0 / 22px 22px,
+    linear-gradient(115deg, transparent 55%, rgba(56,208,234,.16) 55% 56%, transparent 56%),
+    linear-gradient(65deg, transparent 70%, rgba(157,140,255,.18) 70% 71%, transparent 71%);
+  --sg-line: #34385a; --sg-accent: #9d8cff; --sg-accent-2: #38d0ea; --sg-node: #17192e; --sg-ink: #f1f2fb; --sg-ink-2: #a9adcc;
+  --f-display: "Sora", "IBM Plex Sans", "Segoe UI", sans-serif; --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --f-mono: "IBM Plex Mono", Consolas, monospace;
+  --radius: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a0b14; --surface: #12141f; --surface-2: #1a1d2c; --ink: #eceefa; --ink-2: #a7abc8; --ink-3: #6c7090; --line: #262a3d;
+    --accent: #9d8cff; --accent-ink: #120c2e; --accent-soft: #231d45; --accent-2: #38d0ea; --accent-2-soft: #0f2a33;
+    --good: #5bd39a; --good-soft: #10301f; --bad: #ff7a8c; --bad-soft: #3a1520; --warn: #f2b84c; --warn-soft: #3a2c10;
+    --hero-bg: #06070e; --hero-ink: #f1f2fb; --hero-ink-2: #9a9ec0; --hero-accent: #b3a6ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a0b14; --surface: #12141f; --surface-2: #1a1d2c; --ink: #eceefa; --ink-2: #a7abc8; --ink-3: #6c7090; --line: #262a3d;
+  --accent: #9d8cff; --accent-ink: #120c2e; --accent-soft: #231d45; --accent-2: #38d0ea; --accent-2-soft: #0f2a33;
+  --good: #5bd39a; --good-soft: #10301f; --bad: #ff7a8c; --bad-soft: #3a1520; --warn: #f2b84c; --warn-soft: #3a2c10;
+  --hero-bg: #06070e; --hero-ink: #f1f2fb; --hero-ink-2: #9a9ec0; --hero-accent: #b3a6ff;
+  color-scheme: dark;
+}

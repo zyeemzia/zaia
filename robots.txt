@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://zaia.zyeemzia.com/sitemap.xml
