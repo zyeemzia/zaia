@@ -1,7 +1,7 @@
 /* ZyeemZia certification engine — interactive site. Renders everything from window.TRACK (data/*.js). */
 (function () {
   'use strict';
-  const { esc, md, plain, prepare, signatureSVG, hash } = window.ZZ;
+  const { esc, md, plain, prepare, signatureSVG, hash, subnet } = window.ZZ;
   const D = prepare(); const M = D.meta;
   const $ = (s, el) => (el || document).querySelector(s);
   const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
@@ -10,10 +10,34 @@
   /* ---------------- state ---------------- */
   const KEY = M.storeKey || 'zz-track';
   const defaults = () => ({ theme: 'auto', done: {}, quiz: {}, checks: {}, notes: {}, cells: {}, sc: {}, srs: {}, exam: { best: 0, attempts: 0, passed: null, history: [] }, cap: { deliv: {}, rubric: {}, notes: '' }, name: '', xp: 0 });
-  let S = defaults();
-  try { S = Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* storage unavailable */ }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } };
-  const today = () => new Date().toISOString().slice(0, 10);
+  // load saved progress defensively: older or partial saves must never break a page
+  function loadState() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+    const d = defaults(), s = Object.assign(defaults(), typeof saved === 'object' && !Array.isArray(saved) ? saved : {});
+    Object.keys(d).forEach(k => {
+      const dv = d[k], v = s[k];
+      if (dv && typeof dv === 'object') { if (!v || typeof v !== 'object' || Array.isArray(v)) s[k] = dv; }
+      else if (typeof v !== typeof dv) s[k] = dv;
+    });
+    s.exam = Object.assign(defaults().exam, s.exam);
+    if (!Array.isArray(s.exam.history)) s.exam.history = [];
+    if (typeof s.exam.best !== 'number') s.exam.best = 0;
+    if (typeof s.exam.attempts !== 'number') s.exam.attempts = 0;
+    if (s.exam.passed && (typeof s.exam.passed !== 'object' || !s.exam.passed.date)) s.exam.passed = null;
+    s.cap = Object.assign(defaults().cap, s.cap);
+    ['deliv', 'rubric'].forEach(k => { if (!s.cap[k] || typeof s.cap[k] !== 'object') s.cap[k] = {}; });
+    if (typeof s.cap.notes !== 'string') s.cap.notes = '';
+    return s;
+  }
+  let S = loadState();
+  let saveT = 0;
+  const save = () => { clearTimeout(saveT); saveT = 0; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage full or blocked */ } };
+  const saveSoon = () => { clearTimeout(saveT); saveT = setTimeout(save, 350); };
+  // local calendar date (not UTC), so Dhaka learners get the right day around midnight
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const smooth = () => reduced() ? 'auto' : 'smooth';
 
   /* ---------------- icons ---------------- */
   const I = {
@@ -27,7 +51,7 @@
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
     check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', arrowR: '<path d="M9 5l7 7-7 7"/>', arrowL: '<path d="M15 5l-7 7 7 7"/>',
-    flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>', download: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>', copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'
+    flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', download: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>', copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'
   };
   const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n] || ''}</svg>`;
 
@@ -108,7 +132,22 @@
       <div class="card list-card"><div class="eyebrow">Who it is for</div><ul>${(M.audience || []).map(a => `<li>${esc(a)}</li>`).join('')}</ul></div>
       <div class="card list-card"><div class="eyebrow">Skills on your certificate</div><div class="chips">${((M.certificate || {}).skills || []).map(s => `<span class="chip acc">${esc(s)}</span>`).join('')}</div>
         <p class="muted" style="font-size:.9rem">Finish every lesson and pass the ${M.examSize}-question exam with ${M.passMark}% or more to unlock your certificate. Score ${M.distinctionMark}%+ and complete the capstone for <b>Distinction</b>.</p></div>
-    </div>`;
+    </div>
+    ${academyHTML()}`;
+  }
+  function academyHTML() {
+    const F = window.ZZ_FAMILY || []; if (!F.length) return '';
+    const net = F.filter(f => f.path === 'Networking').sort((a, b) => a.tier - b.tier), other = F.filter(f => f.path !== 'Networking');
+    const card = f => {
+      const me = f.code === M.code || f.domain === M.domain;
+      const inner = `<span class="ac-lv">${esc(f.level)}</span><b>${esc(f.code)}</b><span class="ac-n">ZyeemZia™ ${esc(f.name)}</span><small>${esc(f.blurb)}</small>`;
+      if (f.soon && !me) return `<div class="ac-card soon" aria-label="${esc(f.code)}, coming soon">${inner}<span class="chip">Coming soon</span></div>`;
+      return `<a class="ac-card ${me ? 'me' : ''}" href="${me ? '#home' : 'https://' + f.domain + '/'}" ${me ? '' : 'target="_blank" rel="noopener"'}>${inner}${me ? '<span class="chip acc">You are here</span>' : ''}</a>`;
+    };
+    const tiers = [1, 2, 3, 4].map(t => net.filter(f => f.tier === t)).filter(x => x.length);
+    return `<h2 class="section-title">ZyeemZia™ Academy <small>certification paths</small></h2>
+      <div class="academy"><div class="ac-path"><div class="eyebrow">Networking ladder</div><div class="ac-ladder">${tiers.map(g => `<div class="ac-tier">${g.map(card).join('')}</div>`).join('<span class="ac-arrow" aria-hidden="true">→</span>')}</div></div>
+        <div class="ac-path"><div class="eyebrow">Leadership & AI</div><div class="ac-ladder ac-other">${other.map(card).join('')}</div></div></div>`;
   }
   function bookBanner() {
     return `<section class="book-banner">
@@ -163,7 +202,7 @@
       case 'compare': return `<div>${T(b)}<div class="cmp" style="--n:${b.columns.length}">${b.columns.map(c => `<div class="cmp-col"><h4>${md(c.title)}</h4><ul>${c.items.map(x => `<li>${md(x)}</li>`).join('')}</ul></div>`).join('')}</div></div>`;
       case 'flow': return `<div>${T(b)}<div class="flow">${b.items.map((x, k) => `<div class="flow-i"><span class="k">${String(k + 1).padStart(2, '0')}</span><b>${md(x.label)}</b>${x.text ? `<span>${md(x.text)}</span>` : ''}</div>`).join('')}</div></div>`;
       case 'layers': return `<div>${T(b)}<div class="layers">${b.items.map((x, k) => `<div class="layer" style="--d:${Math.round(10 + 30 * (b.items.length - 1 - k) / Math.max(1, b.items.length - 1))}"><b>${md(x.label)}</b><div class="parts">${x.parts.map(p => `<span>${md(p)}</span>`).join('')}</div></div>`).join('')}</div></div>`;
-      case 'formula': return `<div>${T(b)}<div class="formula">${b.items.map(x => `<div class="fm"><small>${md(x.name)}</small><code>${esc(x.expr)}</code><p>${md(x.meaning)}</p></div>`).join('')}</div></div>`;
+      case 'formula': return `<div>${T(b)}<div class="formula">${b.items.map(x => `<div class="fm"><small>${md(x.name)}</small><code>${esc(plain(x.expr))}</code><p>${md(x.meaning)}</p></div>`).join('')}</div></div>`;
       case 'case': return `<section class="case"><div class="case-h"><span class="chip acc">Case study</span><b>${md(b.title)}</b></div><div class="case-b"><p>${md(b.context)}</p>
         <ol>${b.questions.map(q => `<li>${md(q)}</li>`).join('')}</ol>
         <button class="btn btn-sm" type="button" data-reveal>Show model answer</button><div class="reveal" hidden>${md(b.answer)}</div></div></section>`;
@@ -179,13 +218,25 @@
         return `<section class="template" data-tpl="${esc(key)}"><div class="tp-h"><div><span class="chip acc">Template</span> <b>${md(b.title)}</b><div class="muted" style="font-size:.88rem">${md(b.purpose)}</div></div><button class="btn btn-sm" type="button" data-csv>${icon('copy')} Copy as CSV</button></div>
           <div class="tbl"><table><thead><tr>${b.columns.map(c => `<th>${md(c)}</th>`).join('')}</tr></thead><tbody>
           ${(b.example || []).map(r => `<tr class="ex">${r.map(c => `<td>${md(c)}</td>`).join('')}</tr>`).join('')}
-          ${Array.from({ length: Math.min(b.rows || 4, 6) }, (_, r) => `<tr>${b.columns.map((_, c) => `<td contenteditable="true" data-cell="${r}:${c}">${esc((saved[r] || [])[c] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>`;
+          ${Array.from({ length: Math.min(b.rows || 4, 12) }, (_, r) => `<tr>${b.columns.map((_, c) => `<td contenteditable="true" data-cell="${r}:${c}">${esc((saved[r] || [])[c] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>`;
       }
       case 'reflection': return `<section class="reflection"><div class="eyebrow">Reflect</div><p>${md(b.prompt)}</p><textarea data-note="${esc(key)}" placeholder="Your notes stay on this device…">${esc(S.notes[key] || '')}</textarea></section>`;
       case 'terms': return `<div><h3 class="blk-title">Key terms</h3><div class="terms">${b.items.map(x => `<div class="term"><b>${md(x.term)}</b><span>${md(x.def)}</span></div>`).join('')}</div></div>`;
+      case 'cli': return `<section class="cli">${T(b)}<div class="cli-win"><div class="cli-bar"><i></i><i></i><i></i><span>${esc(b.device)}</span><button class="btn btn-sm cli-copy" type="button" data-clicopy>${icon('copy')} Copy</button></div>
+        <pre class="cli-body">${b.lines.map(l => `<span class="${/^\s*[!#]/.test(l) && !/^\s*#\s*\w+\s*$/.test(l) ? 'c' : /[>#]\s*\S/.test(l.slice(0, 40)) && /^[\w\-.()]+[>#]/.test(l) ? 'p' : ''}">${esc(l)}</span>`).join('\n')}</pre></div>${b.note ? `<p class="cli-note">${md(b.note)}</p>` : ''}</section>`;
+      case 'tool': return `<section class="tool-subnet" data-subnet>${T(b) || '<h3 class="blk-title">Subnet calculator</h3>'}${b.prompt ? `<p class="muted">${md(b.prompt)}</p>` : ''}
+        <label class="sn-in"><span>IPv4 address / prefix</span><input type="text" value="192.168.10.77/26" data-subnet-in spellcheck="false" autocomplete="off"></label>
+        <div class="sn-out">${subnetHTML('192.168.10.77/26')}</div></section>`;
       case 'quiz': { const qid = 'q' + i; quizStates[qid] = { i: 0, picked: null, right: 0, res: [], items: b.items, lesson: l.id }; return `<section class="quiz" id="${qid}">${quizInner(qid)}</section>`; }
       default: return '';
     }
+  }
+
+  function subnetHTML(v) {
+    const r = subnet(v);
+    if (!r) return `<p class="muted">Type an address like <code>10.20.30.40/22</code>.</p>`;
+    const rows = [['Network', r.network + '/' + r.prefix], ['Subnet mask', r.mask], ['Wildcard mask', r.wildcard], ['First usable', r.first], ['Last usable', r.last], ['Broadcast', r.broadcast], ['Usable hosts', r.hosts.toLocaleString()], ['Class · scope', `${r.cls} · ${r.private ? 'private (RFC 1918)' : 'public / other'}`], ['Mask in binary', r.binMask]];
+    return `<div class="sn-grid">${rows.map(([k, x]) => `<div><small>${k}</small><b>${esc(x)}</b></div>`).join('')}</div>`;
   }
 
   /* ---------------- quiz (lessons + practice) ---------------- */
@@ -199,14 +250,14 @@
     const q = st.items[st.i]; const ans = st.picked != null;
     return `<div class="quiz-top"><b>${st.practice ? 'Practice' : 'Knowledge check'} · ${st.i + 1}/${n}</b>${dots}</div>
       <div class="q-text">${md(q.q)}</div>
-      <div class="opts">${q.options.map((o, k) => `<button class="opt ${ans ? (k === q.answer ? 'ok' : k === st.picked ? 'no' : '') : ''}" type="button" data-qopt="${qid}:${k}" ${ans ? 'disabled' : ''}><span class="k">${'ABCD'[k]}</span><span>${md(o)}</span></button>`).join('')}</div>
+      <div class="opts">${q.options.map((o, k) => `<button class="opt ${ans ? (k === q.answer ? 'ok' : k === st.picked ? 'no' : '') : ''}" type="button" data-qopt="${qid}:${k}" ${ans ? 'disabled' : ''} ${ans && k === q.answer ? 'aria-label="Correct answer: ' + esc(plain(o)) + '"' : ''}><span class="k">${'ABCD'[k]}</span><span>${md(o)}</span></button>`).join('')}</div>
       ${ans ? `<div class="explain">${md(q.explain)}</div><div class="q-foot"><button class="btn btn-primary" type="button" data-qnext="${qid}">${st.i + 1 < n ? 'Next question' : 'See result'} ${icon('arrowR')}</button></div>` : ''}`;
   }
-  function quizPick(qid, k) { const st = quizStates[qid]; if (!st || st.picked != null) return; st.picked = k; const ok = k === st.items[st.i].answer; st.res[st.i] = ok; if (ok) st.right++; $('#' + qid).innerHTML = quizInner(qid); }
+  function quizPick(qid, k) { const st = quizStates[qid]; if (!st || st.picked != null) return; st.picked = k; const ok = k === st.items[st.i].answer; st.res[st.i] = ok; if (ok) st.right++; const el = $('#' + qid); el.innerHTML = quizInner(qid); const nx = $('[data-qnext]', el); if (nx) nx.focus({ preventScroll: true }); }
   function quizNext(qid) {
     const st = quizStates[qid]; st.i++; st.picked = null;
     if (st.i >= st.items.length && !st.practice) { const p = Math.round(st.right / st.items.length * 100); S.quiz[st.lesson] = Math.max(S.quiz[st.lesson] || 0, p); S.xp += st.right * 5; save(); if (p >= 80) confetti(); }
-    $('#' + qid).innerHTML = quizInner(qid);
+    const el = $('#' + qid); el.innerHTML = quizInner(qid); const f = $('.opt:not([disabled]), [data-qretry]', el); if (f) f.focus({ preventScroll: true });
   }
 
   /* ---------------- practice: drills + flashcards + glossary ---------------- */
@@ -215,7 +266,7 @@
     return `<div class="page-head"><div class="eyebrow">Practice</div><h1 class="page-title">Practise until it sticks</h1><p class="muted">Short drills from the exam bank with instant explanations, flashcards with spaced repetition, and the full glossary.</p></div>
       <div class="two"><a class="card list-card" href="#cards" style="text-decoration:none;color:inherit"><div class="eyebrow">Flashcards</div><h2>${D.terms.length} key terms</h2><p class="muted">Spaced repetition: cards you know come back later, cards you miss come back sooner.</p></a>
         <a class="card list-card" href="#glossary" style="text-decoration:none;color:inherit"><div class="eyebrow">Glossary</div><h2>A–Z reference</h2><p class="muted">Every term from every module, searchable.</p></a></div>
-      <h2 class="section-title">Module drills <small>10 questions · untimed · explanations after each answer</small></h2>
+      <h2 class="section-title">Module drills <small>up to 10 questions · untimed · explanations after each answer</small></h2>
       <div class="mod-grid">${D.modules.map((m, i) => `<button class="mod-card" type="button" data-drill="${m.id}" style="text-align:left;cursor:pointer"><div class="mod-top"><span class="mod-num">${String(i + 1).padStart(2, '0')}</span><span class="chip acc">${esc(m.code)}</span></div><h3>${md(m.title)}</h3><p>${D.exam.filter(q => q.module === m.id).length} questions in bank</p></button>`).join('')}
         <button class="mod-card" type="button" data-drill="all" style="text-align:left;cursor:pointer"><div class="mod-top"><span class="mod-num">∞</span><span class="chip">Mixed</span></div><h3>Mixed drill</h3><p>10 random questions from all modules</p></button></div>
       <div id="drill" style="margin-top:18px"></div>`;
@@ -225,58 +276,70 @@
     if (!pool.length) { toast('No questions for this module yet.'); return; }
     quizStates.drill = { i: 0, picked: null, right: 0, res: [], items: shuffle(pool).slice(0, 10), practice: true };
     $('#drill').innerHTML = `<section class="quiz" id="drill-q"></section>`; quizStates['drill-q'] = quizStates.drill; $('#drill-q').innerHTML = quizInner('drill-q');
-    $('#drill').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('#drill').scrollIntoView({ behavior: smooth(), block: 'start' });
   }
   const INTERVALS = [0, 1, 2, 4, 8, 16, 32];
   let fcQueue = [], fcFlip = false;
+  const fcStats = () => { const known = D.terms.filter(t => S.srs[t.term] && S.srs[t.term].box >= 4).length; const due = fcQueue.filter(t => S.srs[t.term]).length; return `${known} of ${D.terms.length} mastered · ${due} to review · ${fcQueue.length - due} new`; };
   function viewCards() {
-    const now = Date.now();
+    const now = Date.now(); fcFlip = false;
     fcQueue = D.terms.filter(t => S.srs[t.term] && S.srs[t.term].due <= now).concat(D.terms.filter(t => !S.srs[t.term]).slice(0, 15));
-    const known = Object.values(S.srs).filter(c => c.box >= 4).length;
-    return `<div class="fc"><div class="page-head"><div class="eyebrow">Flashcards</div><h1 class="page-title">Key terms</h1><p class="muted">${known} of ${D.terms.length} mastered · ${fcQueue.length} due now</p></div><div id="fcStage">${fcStage()}</div></div>`;
+    return `<div class="fc"><div class="page-head"><div class="eyebrow">Flashcards</div><h1 class="page-title">Key terms</h1><p class="muted" id="fcStats" aria-live="polite">${fcStats()}</p></div><div id="fcStage">${fcStage()}</div></div>`;
   }
   function fcStage() {
     const t = fcQueue[0];
     if (!t) return `<div class="empty"><b>All done for now.</b><p>Come back tomorrow for the next review.</p></div>`;
-    return `<div class="card3d ${fcFlip ? 'flip' : ''}" id="fcCard" role="button" tabindex="0" aria-label="Flip card"><div class="card3d-in"><div class="face"><div><div class="eyebrow">${esc(t.lesson.module.code)}</div><b>${md(t.term)}</b><p class="muted" style="margin-top:10px;font-size:.85rem">Tap to flip</p></div></div><div class="face back"><p>${md(t.def)}</p></div></div></div>
+    return `<div class="card3d ${fcFlip ? 'flip' : ''}" id="fcCard" role="button" tabindex="0" aria-pressed="${fcFlip}" aria-label="${esc(plain(t.term))}. ${fcFlip ? esc(plain(t.def)) : 'Press Enter to see the definition'}"><div class="card3d-in"><div class="face"><div><div class="eyebrow">${esc(t.lesson.module.code)}</div><b>${md(t.term)}</b><p class="muted" style="margin-top:10px;font-size:.85rem">Tap to flip</p></div></div><div class="face back"><p>${md(t.def)}</p></div></div></div>
       <div class="fc-actions"><button class="btn" type="button" data-fc="0">Again</button><button class="btn" type="button" data-fc="1">Hard</button><button class="btn btn-primary" type="button" data-fc="2">Easy</button></div>`;
   }
   function fcGrade(g) {
     const t = fcQueue.shift(); if (!t) return; const c = S.srs[t.term] || { box: 0, due: 0 };
     if (g === 0) { c.box = 1; c.due = Date.now() + 60e3; fcQueue.splice(Math.min(3, fcQueue.length), 0, t); }
     else if (g === 1) { c.box = Math.max(1, c.box); c.due = Date.now() + 864e5; }
-    else { c.box = Math.min(6, c.box + 1); c.due = Date.now() + INTERVALS[c.box] * 864e5; }
-    S.srs[t.term] = c; fcFlip = false; save(); $('#fcStage').innerHTML = fcStage();
+    else { c.box = Math.min(6, c.box + (c.box === 0 ? 2 : 1)); c.due = Date.now() + INTERVALS[c.box] * 864e5; }
+    S.srs[t.term] = c; fcFlip = false; save(); $('#fcStage').innerHTML = fcStage(); const st = $('#fcStats'); if (st) st.textContent = fcStats();
+    const card = $('#fcCard'); if (card) card.focus({ preventScroll: true });
   }
   let glQuery = '';
   function viewGlossary() {
     return `<div class="page-head"><div class="eyebrow">Glossary</div><h1 class="page-title">${D.terms.length} terms, A to Z</h1><input class="search-in" id="glSearch" type="search" placeholder="Filter terms…" value="${esc(glQuery)}" aria-label="Filter glossary"></div><div id="glList">${glossaryList()}</div>`;
   }
   function glossaryList() {
-    const q = glQuery.toLowerCase(); const list = D.terms.filter(t => !q || (t.term + ' ' + t.def).toLowerCase().includes(q));
+    const q = glQuery.toLowerCase().trim(); const list = D.terms.filter(t => !q || (t._s || (t._s = (t.term + ' ' + plain(t.def)).toLowerCase())).includes(q));
     if (!list.length) return `<div class="empty">No matching terms.</div>`;
     let last = ''; return list.map(t => { const L = t.term[0].toUpperCase(); const h = L !== last ? `<div class="gl-letter">${esc(L)}</div>` : ''; last = L; return `${h}<div class="term"><b>${md(t.term)}</b><span>${md(t.def)}</span> <a href="#lesson/${t.lesson.id}" class="chip" style="text-decoration:none">${esc(t.lesson.module.code)}</a></div>`; }).join('');
   }
 
   /* ---------------- certification exam ---------------- */
+  // a running exam is saved on every change, so refreshes, crashes or a phone discarding the tab never lose it
+  const EXKEY = KEY + ':exam';
   let EX = null, exTimer = 0;
+  const saveEX = () => { try { if (EX && !EX.done) localStorage.setItem(EXKEY, JSON.stringify({ qs: EX.qs, ans: EX.ans, flags: EX.flags, i: EX.i, end: EX.end })); else localStorage.removeItem(EXKEY); } catch (e) { /* ignore */ } };
+  function restoreEX() {
+    let r = null; try { r = JSON.parse(localStorage.getItem(EXKEY) || 'null'); } catch (e) { r = null; }
+    if (!r || !Array.isArray(r.qs) || !r.qs.length || r.qs.some(i => !D.exam[i])) { try { localStorage.removeItem(EXKEY); } catch (e) { /* ignore */ } return; }
+    EX = { qs: r.qs, ans: r.ans || {}, flags: r.flags || {}, i: Math.min(r.i || 0, r.qs.length - 1), end: +r.end || Date.now(), done: false };
+    if (EX.end <= Date.now()) { examSubmit(true, true); return; }
+    exTimer = setInterval(tickExam, 1000);
+  }
   function viewExam() {
     if (EX && !EX.done) return examHTML();
     const last = S.exam.history[S.exam.history.length - 1];
-    return `<div class="exam-wrap"><div class="page-head"><div class="eyebrow">${esc(M.short)} certification exam</div><h1 class="page-title">Prove it</h1><p class="muted">Scenario-based questions drawn at random from the ${D.exam.length}-question bank across all ${D.modules.length} modules. You can flag questions and move freely between them before you submit.</p></div>
+    return `<div class="exam-wrap"><div class="page-head"><div class="eyebrow">${esc(M.short)} certification exam</div><h1 class="page-title">Prove it</h1><p class="muted">Scenario-based questions drawn at random from the ${D.exam.length}-question bank across all ${D.modules.length} modules. You can flag questions and move freely between them before you submit. Your answers are saved as you go, so a refresh will not lose them.</p></div>
       <div class="rules"><div><b>${Math.min(M.examSize, D.exam.length)}</b><span>questions</span></div><div><b>${M.examMinutes}</b><span>minutes</span></div><div><b>${M.passMark}%</b><span>to pass</span></div><div><b>${M.distinctionMark}%</b><span>for distinction</span></div></div>
       ${!req().lessons ? `<div class="callout warning"><span class="ct">Before you start</span>You can take the exam any time for practice, but the certificate also needs every lesson completed (${doneCount()}/${D.lessons.length} so far).</div>` : ''}
-      <div class="hero-actions"><button class="btn btn-primary" type="button" data-exstart ${D.exam.length ? '' : 'disabled'}>${icon('exam')} Start the exam</button><a class="btn" href="#practice">Warm up with drills</a></div>
-      ${S.exam.attempts ? `<div class="card list-card"><div class="eyebrow">Your record</div><p>Attempts: <b>${S.exam.attempts}</b> · Best score: <b>${S.exam.best}%</b>${last ? ` · Last: ${last.score}% on ${last.date}` : ''}${S.exam.passed ? ` · <span class="chip ok">Passed ${S.exam.passed.date}</span>` : ''}</p></div>` : ''}</div>`;
+      <div class="hero-actions"><button class="btn btn-primary" type="button" data-exstart ${D.exam.length ? '' : 'disabled'}>${icon('exam')} ${S.exam.attempts ? 'Start a new attempt' : 'Start the exam'}</button><a class="btn" href="#practice">Warm up with drills</a></div>
+      ${S.exam.attempts ? `<div class="card list-card"><div class="eyebrow">Your record</div><p>Attempts: <b>${S.exam.attempts}</b> · Best score: <b>${S.exam.best}%</b>${last ? ` · Last: ${last.score}% on ${esc(last.date)}` : ''}${S.exam.passed ? ` · <span class="chip ok">Passed ${esc(S.exam.passed.date)}</span>` : ''}</p></div>` : ''}</div>`;
   }
   function examStart() {
     const n = Math.min(M.examSize || 40, D.exam.length);
-    // stratified draw: proportional to each module's share of the bank
+    // stratified draw: proportional to each module's share of the bank, topped up from the rest
     const byMod = {}; D.exam.forEach((q, i) => (byMod[q.module] = byMod[q.module] || []).push(i));
     let pick = []; Object.values(byMod).forEach(ix => { pick = pick.concat(shuffle(ix).slice(0, Math.round(n * ix.length / D.exam.length))); });
     pick = shuffle(pick).slice(0, n); if (pick.length < n) pick = pick.concat(shuffle(D.exam.map((_, i) => i).filter(i => !pick.includes(i))).slice(0, n - pick.length));
     EX = { qs: pick, ans: {}, flags: {}, i: 0, end: Date.now() + (M.examMinutes || 60) * 60e3, done: false };
-    clearInterval(exTimer); exTimer = setInterval(tickExam, 1000); render();
+    saveEX(); clearInterval(exTimer); exTimer = setInterval(tickExam, 1000);
+    if (location.hash !== '#exam') location.hash = '#exam'; else paintExam('.opt');
   }
   function tickExam() {
     if (!EX || EX.done) { clearInterval(exTimer); return; }
@@ -284,35 +347,54 @@
     if (el) { const m = Math.floor(left / 60e3), s = Math.floor(left / 1000) % 60; el.textContent = `${m}:${String(s).padStart(2, '0')}`; el.classList.toggle('low', left < 5 * 60e3); }
     if (left <= 0) examSubmit(true);
   }
+  const answeredN = () => Object.keys(EX.ans).length;
   function examHTML() {
-    const q = D.exam[EX.qs[EX.i]]; const a = EX.ans[EX.i]; const answered = Object.keys(EX.ans).length;
-    return `<div class="exam-wrap"><div class="exam-bar"><span>Question ${EX.i + 1}/${EX.qs.length}</span><span>${answered} answered</span><span>⏱ <span class="timer" id="exTime">–</span></span></div>
-      <section class="quiz"><div class="eyebrow">${esc((D.modules.find(m => m.id === q.module) || {}).code || '')}</div><div class="q-text">${md(q.q)}</div>
-        <div class="opts">${q.options.map((o, k) => `<button class="opt ${a === k ? 'sel' : ''}" type="button" data-exans="${k}"><span class="k">${'ABCD'[k]}</span><span>${md(o)}</span></button>`).join('')}</div>
-        <div class="q-foot" style="justify-content:space-between"><button class="btn btn-sm ${EX.flags[EX.i] ? 'btn-dark' : ''}" type="button" data-exflag>${icon('flag')} ${EX.flags[EX.i] ? 'Flagged' : 'Flag for review'}</button>
-          <span style="display:flex;gap:8px"><button class="btn" type="button" data-exgo="${EX.i - 1}" ${EX.i ? '' : 'disabled'}>${icon('arrowL')}</button>${EX.i + 1 < EX.qs.length ? `<button class="btn btn-primary" type="button" data-exgo="${EX.i + 1}">Next ${icon('arrowR')}</button>` : `<button class="btn btn-primary" type="button" data-exsubmit>Submit exam</button>`}</span></div></section>
-      <div class="card list-card"><div class="eyebrow">Question map · tap to jump</div><div class="qmap">${EX.qs.map((_, k) => `<button type="button" data-exgo="${k}" class="${EX.ans[k] != null ? 'ans' : ''} ${EX.flags[k] ? 'flag' : ''} ${k === EX.i ? 'cur' : ''}">${k + 1}</button>`).join('')}</div>
-        <div id="exConfirm"><button class="btn btn-sm" type="button" data-exsubmit>Submit exam (${answered}/${EX.qs.length} answered)</button></div></div></div>`;
+    const q = D.exam[EX.qs[EX.i]]; const a = EX.ans[EX.i]; const answered = answeredN();
+    return `<div class="exam-wrap"><div class="exam-bar" role="status"><span>Question ${EX.i + 1}/${EX.qs.length}</span><span id="exAnswered">${answered} answered</span><span>⏱ <span class="timer" id="exTime" aria-label="Time left">–</span></span></div>
+      <section class="quiz" aria-labelledby="exQ"><div class="eyebrow">${esc((D.modules.find(m => m.id === q.module) || {}).code || '')}</div><div class="q-text" id="exQ" tabindex="-1">${md(q.q)}</div>
+        <div class="opts" role="group" aria-label="Answer options">${q.options.map((o, k) => `<button class="opt ${a === k ? 'sel' : ''}" type="button" data-exans="${k}" aria-pressed="${a === k}"><span class="k">${'ABCD'[k]}</span><span>${md(o)}</span></button>`).join('')}</div>
+        <div class="q-foot" style="justify-content:space-between"><button class="btn btn-sm ${EX.flags[EX.i] ? 'btn-dark' : ''}" type="button" data-exflag aria-pressed="${!!EX.flags[EX.i]}">${icon('flag')} <span>${EX.flags[EX.i] ? 'Flagged' : 'Flag for review'}</span></button>
+          <span style="display:flex;gap:8px"><button class="btn" type="button" data-exgo="${EX.i - 1}" ${EX.i ? '' : 'disabled'} aria-label="Previous question">${icon('arrowL')}</button>${EX.i + 1 < EX.qs.length ? `<button class="btn btn-primary" type="button" data-exgo="${EX.i + 1}">Next ${icon('arrowR')}</button>` : `<button class="btn btn-primary" type="button" data-exsubmit>Submit exam</button>`}</span></div></section>
+      <div class="card list-card"><div class="eyebrow">Question map · tap to jump</div><div class="qmap">${EX.qs.map((_, k) => qmapBtn(k)).join('')}</div>
+        <div id="exConfirm"><button class="btn btn-sm" type="button" data-exsubmit>Submit exam (<span id="exAnswered2">${answered}</span>/${EX.qs.length} answered)</button></div></div></div>`;
   }
-  function examSubmit(timeUp) {
-    if (!EX || EX.done) return; clearInterval(exTimer); EX.done = true;
+  const qmapBtn = k => `<button type="button" data-exgo="${k}" class="${EX.ans[k] != null ? 'ans' : ''} ${EX.flags[k] ? 'flag' : ''} ${k === EX.i ? 'cur' : ''}" aria-label="Question ${k + 1}${EX.ans[k] != null ? ', answered' : ''}${EX.flags[k] ? ', flagged' : ''}" ${k === EX.i ? 'aria-current="step"' : ''}>${k + 1}</button>`;
+  // repaint only the exam view (no scroll jump), then put focus where the learner expects it
+  function paintExam(focusSel) { view.innerHTML = examHTML(); tickExam(); const f = focusSel && $(focusSel, view); if (f) f.focus({ preventScroll: true }); }
+  function examAnswer(k) {
+    EX.ans[EX.i] = k; saveEX();
+    $$('[data-exans]', view).forEach(b => { const on = +b.dataset.exans === k; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
+    const m = $(`.qmap [data-exgo="${EX.i}"]`, view); if (m) m.outerHTML = qmapBtn(EX.i);
+    [$('#exAnswered'), $('#exAnswered2')].forEach((el, j) => { if (el) el.textContent = j ? answeredN() : answeredN() + ' answered'; });
+  }
+  function examFlag() {
+    EX.flags[EX.i] = !EX.flags[EX.i]; saveEX();
+    const b = $('[data-exflag]', view); if (b) { b.classList.toggle('btn-dark', EX.flags[EX.i]); b.setAttribute('aria-pressed', EX.flags[EX.i]); $('span', b).textContent = EX.flags[EX.i] ? 'Flagged' : 'Flag for review'; }
+    const m = $(`.qmap [data-exgo="${EX.i}"]`, view); if (m) m.outerHTML = qmapBtn(EX.i);
+  }
+  function examGo(i) { EX.i = Math.max(0, Math.min(EX.qs.length - 1, i)); saveEX(); paintExam('#exQ'); const top = $('.exam-wrap'); if (top && top.getBoundingClientRect().top < 0) window.scrollTo({ top: top.offsetTop - 80, behavior: 'auto' }); }
+  function examSubmit(timeUp, quiet) {
+    if (!EX || EX.done) return; clearInterval(exTimer); EX.done = true; saveEX();
     const per = {}; let right = 0;
     EX.qs.forEach((qi, k) => { const q = D.exam[qi]; per[q.module] = per[q.module] || { r: 0, n: 0 }; per[q.module].n++; if (EX.ans[k] === q.answer) { right++; per[q.module].r++; } });
     const score = Math.round(right / EX.qs.length * 100); const pass = score >= M.passMark;
     S.exam.attempts++; S.exam.best = Math.max(S.exam.best, score); S.exam.history.push({ date: today(), score });
-    if (pass && (!S.exam.passed || score > S.exam.passed.score)) S.exam.passed = { date: today(), score };
-    S.xp += right * 3; save(); EX.result = { right, score, pass, per, timeUp }; if (pass) confetti(); render();
+    // the first pass fixes the issue date and credential ID for good; later retakes only raise the best score
+    if (pass && !S.exam.passed) S.exam.passed = { date: today(), score, id: `${M.code}-${today().replace(/-/g, '')}-${hash(M.code + '|' + Date.now() + '|' + Math.random()).slice(0, 6)}` };
+    S.xp += right * 3; save(); EX.result = { right, score, pass, per, timeUp };
+    if (location.hash.split('/')[0] === '#exam') { if (pass) confetti(); view.innerHTML = examResultHTML(); renderChrome(); window.scrollTo({ top: 0, behavior: 'auto' }); const h = $('.verdict .big-num'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } }
+    else { EX.unseen = true; renderChrome(); if (!quiet || timeUp) toast(`Time is up: your exam was submitted (${score}%). Open Exam to see your result.`, 6000); }
   }
   function examResultHTML() {
     const r = EX.result;
     return `<div class="exam-wrap"><section class="verdict ${r.pass ? 'pass' : 'fail'}"><div class="eyebrow">${r.timeUp ? 'Time is up · ' : ''}${r.pass ? 'Passed' : 'Not yet'}</div><div class="big-num">${r.score}%</div>
         <p>${r.right} of ${EX.qs.length} correct. ${r.pass ? (eligible() ? 'Your certificate is unlocked.' : `Complete the remaining lessons (${doneCount()}/${D.lessons.length}) to unlock your certificate.`) : `You need ${M.passMark}%. Review the weaker modules below and try again.`}</p>
-        <div class="hero-actions">${r.pass ? `<a class="btn btn-primary" href="#certificate">${icon('cert')} Go to certificate</a>` : `<button class="btn btn-primary" type="button" data-exstart>Retake exam</button>`}<button class="btn" type="button" data-exreview>Review answers</button></div></section>
+        <div class="hero-actions">${r.pass ? `<a class="btn btn-primary" href="#certificate">${icon('cert')} Go to certificate</a>` : ''}<button class="btn ${r.pass ? '' : 'btn-primary'}" type="button" data-exstart>${r.pass ? 'Retake for a higher score' : 'Retake exam'}</button><button class="btn" type="button" data-exreview>Review answers</button></div></section>
       <div class="card list-card"><div class="eyebrow">Score by module</div><div class="breakdown">${D.modules.filter(m => r.per[m.id]).map(m => { const p = r.per[m.id]; const v = Math.round(p.r / p.n * 100); return `<div class="bd-row"><span>${esc(m.code)}</span><div class="bar"><i style="width:${v}%"></i></div><span>${p.r}/${p.n}</span></div>`; }).join('')}</div></div>
       <div id="exReview"></div></div>`;
   }
   function examReview() {
-    $('#exReview').innerHTML = EX.qs.map((qi, k) => { const q = D.exam[qi]; const a = EX.ans[k]; return `<section class="quiz" style="border-color:${a === q.answer ? 'var(--good)' : 'var(--bad)'}"><div class="eyebrow">Question ${k + 1}</div><div class="q-text">${md(q.q)}</div><div class="opts">${q.options.map((o, j) => `<div class="opt ${j === q.answer ? 'ok' : j === a ? 'no' : ''}"><span class="k">${'ABCD'[j]}</span><span>${md(o)}</span></div>`).join('')}</div><div class="explain">${md(q.explain)}</div></section>`; }).join('');
+    $('#exReview').innerHTML = EX.qs.map((qi, k) => { const q = D.exam[qi]; const a = EX.ans[k]; return `<section class="quiz" style="border-color:${a === q.answer ? 'var(--good)' : 'var(--bad)'}"><div class="eyebrow">Question ${k + 1}${a == null ? ' · not answered' : a === q.answer ? ' · correct' : ' · incorrect'}</div><div class="q-text">${md(q.q)}</div><div class="opts">${q.options.map((o, j) => `<div class="opt ${j === q.answer ? 'ok' : j === a ? 'no' : ''}"><span class="k">${'ABCD'[j]}</span><span>${md(o)}</span></div>`).join('')}</div><div class="explain">${md(q.explain)}</div></section>`; }).join('');
   }
 
   /* ---------------- capstone ---------------- */
@@ -322,12 +404,17 @@
       <div class="two"><section class="checklist"><h3 class="blk-title">Deliverables · ${done}/${(c.deliverables || []).length}</h3>${(c.deliverables || []).map((d, i) => `<label class="ck"><input type="checkbox" data-deliv="${i}" ${S.cap.deliv[i] ? 'checked' : ''}><span>${md(d)}</span></label>`).join('')}</section>
         <section class="reflection"><div class="eyebrow">Project notes</div><p>Write your project name, scope and links to your files here. Everything stays on this device.</p><textarea id="capNotes" style="min-height:220px">${esc(S.cap.notes || '')}</textarea></section></div>
       <h2 class="section-title">Self-assessment rubric <small>tap the level that matches your work</small></h2>
-      <div class="tbl"><table class="rubric-tbl"><thead><tr><th>Criterion</th><th>Developing</th><th>Proficient</th><th>Excellent</th></tr></thead><tbody>${(c.rubric || []).map((r, i) => `<tr><td><b>${md(r.criterion)}</b></td>${r.levels.map((lv, j) => `<td data-rub="${i}:${j}" class="${S.cap.rubric[i] === j ? 'sel' : ''}">${md(lv)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="tbl"><table class="rubric-tbl"><thead><tr><th>Criterion</th><th>Developing</th><th>Proficient</th><th>Excellent</th></tr></thead><tbody>${(c.rubric || []).map((r, i) => `<tr><td><b>${md(r.criterion)}</b></td>${r.levels.map((lv, j) => `<td class="${S.cap.rubric[i] === j ? 'sel' : ''}"><button type="button" class="rub-btn" data-rub="${i}:${j}" aria-pressed="${S.cap.rubric[i] === j}">${md(lv)}</button></td>`).join('')}</tr>`).join('')}</tbody></table></div>
       <p class="muted" style="margin-top:12px">Complete every deliverable and score ${M.distinctionMark}%+ in the exam to earn your certificate <b>with Distinction</b>.</p>`;
   }
 
   /* ---------------- certificate ---------------- */
-  function credId() { const p = S.exam.passed || { date: today(), score: S.exam.best }; return `${M.code}-${p.date.replace(/-/g, '')}-${hash((S.name || '').trim().toLowerCase() + '|' + M.code + '|' + p.date + '|' + p.score).slice(0, 6)}`; }
+  function credId() {
+    const p = S.exam.passed; if (!p) return '';
+    // older saves had no stored ID: create it once and keep it forever
+    if (!p.id) { p.id = `${M.code}-${p.date.replace(/-/g, '')}-${hash(M.code + '|' + p.date + '|' + p.score + '|' + (S.name || '').trim().toLowerCase()).slice(0, 6)}`; save(); }
+    return p.id;
+  }
   function viewCertificate() {
     const r = req(); const ok = eligible();
     const items = [['Complete every lesson', `${doneCount()}/${D.lessons.length} lessons`, r.lessons, '#modules'], [`Pass the exam with ${M.passMark}%+`, S.exam.best ? `Best score ${S.exam.best}%` : 'Not attempted yet', r.exam, '#exam'], [`Distinction (optional): ${M.distinctionMark}%+ and the capstone`, capDone() ? 'Capstone complete' : 'Capstone in progress', distinction(), '#capstone']];
@@ -345,30 +432,43 @@
     const q = new URLSearchParams({ startTask: 'CERTIFICATION_NAME', name: `${M.full} (${M.short})`, organizationName: 'ZyeemZia', issueYear: y, issueMonth: String(+mo), certUrl: `https://${M.domain}/`, certId: credId() });
     return 'https://www.linkedin.com/profile/add?' + q.toString();
   }
+  // canvas text needs its faces loaded first, otherwise the PNG falls back to system fonts
+  let certFontsP = null;
+  function certFonts() {
+    if (!certFontsP) {
+      const cs = getComputedStyle(document.documentElement); const f = v => cs.getPropertyValue(v).trim();
+      certFontsP = document.fonts && document.fonts.load ? Promise.all([`800 74px ${f('--f-display')}`, `500 30px ${f('--f-body')}`, `600 24px ${f('--f-body')}`, `600 22px ${f('--f-mono')}`].map(s => document.fonts.load(s).catch(() => null))) : Promise.resolve();
+    }
+    return certFontsP;
+  }
+  let certRAF = 0;
+  const drawCertSoon = () => { cancelAnimationFrame(certRAF); certRAF = requestAnimationFrame(drawCert); };
+  function fitFont(x, text, weight, size, min, family, maxW) { let fs = size; do { x.font = `${weight} ${fs}px ${family}`; } while (x.measureText(text).width > maxW && --fs > min); return fs; }
   function drawCert() {
     const c = $('#certCanvas'); if (!c) return; const x = c.getContext('2d'); const W = c.width, H = c.height; const ok = eligible();
-    const cs = getComputedStyle(document.documentElement); const acc = cs.getPropertyValue('--sg-accent').trim() || '#ff8a4c', acc2 = cs.getPropertyValue('--sg-accent-2').trim() || '#6fa8dc', dark = cs.getPropertyValue('--hero-bg').trim() || '#13203a';
+    // fixed (theme-independent) colours, so the PNG looks the same in light and dark mode
+    const cs = getComputedStyle(document.documentElement); const acc = cs.getPropertyValue('--sg-accent').trim() || '#ff8a4c', acc2 = cs.getPropertyValue('--sg-accent-2').trim() || '#6fa8dc', dark = cs.getPropertyValue('--sg-node').trim() || '#13203a';
     const disp = cs.getPropertyValue('--f-display').trim(), body = cs.getPropertyValue('--f-body').trim(), mono = cs.getPropertyValue('--f-mono').trim();
     x.fillStyle = '#fbfbfd'; x.fillRect(0, 0, W, H);
     x.fillStyle = dark; x.fillRect(0, 0, 380, H);
     x.fillStyle = acc; x.fillRect(380, 0, 10, H);
     // side band: brand, code, seal
     x.fillStyle = '#ffffff'; x.textAlign = 'left'; x.font = `600 22px ${mono}`; x.fillText('ZyeemZia™', 48, 90);
-    x.fillStyle = acc; x.font = `800 112px ${disp}`; x.fillText(M.short, 40, 230);
+    x.fillStyle = acc; fitFont(x, M.short, 800, 112, 40, disp, 310); x.fillText(M.short, 40, 230, 310);
     x.fillStyle = '#c9cfdd'; x.font = `500 24px ${body}`; wrapText(x, M.name, 48, 280, 300, 32);
     x.save(); x.translate(190, 760); x.strokeStyle = acc; x.lineWidth = 6; x.beginPath(); for (let i = 0; i < 16; i++) { const a = Math.PI / 8 * i, r = i % 2 ? 98 : 118; x.lineTo(Math.cos(a) * r, Math.sin(a) * r); } x.closePath(); x.stroke();
-    x.beginPath(); x.arc(0, 0, 80, 0, 7); x.strokeStyle = acc2; x.lineWidth = 3; x.stroke(); x.fillStyle = '#ffffff'; x.textAlign = 'center'; x.font = `800 34px ${disp}`; x.fillText(distinction() ? 'DISTINCTION' : 'CERTIFIED', 0, 6); x.font = `500 18px ${mono}`; x.fillStyle = '#c9cfdd'; x.fillText(String(new Date().getFullYear()), 0, 36); x.restore();
+    x.beginPath(); x.arc(0, 0, 80, 0, 7); x.strokeStyle = acc2; x.lineWidth = 3; x.stroke(); x.fillStyle = '#ffffff'; x.textAlign = 'center'; x.font = `800 34px ${disp}`; x.fillText(distinction() ? 'DISTINCTION' : 'CERTIFIED', 0, 6); x.font = `500 18px ${mono}`; x.fillStyle = '#c9cfdd'; x.fillText((S.exam.passed ? S.exam.passed.date : today()).slice(0, 4), 0, 36); x.restore();
     // main panel
     const L = 460; x.textAlign = 'left';
     x.fillStyle = '#5b6478'; x.font = `600 24px ${mono}`; x.fillText((M.certificate || {}).title ? M.certificate.title.toUpperCase() : 'CERTIFICATE OF ACHIEVEMENT', L, 140);
     x.fillStyle = '#14182a'; x.font = `500 30px ${body}`; x.fillText('This certifies that', L, 230);
-    x.fillStyle = '#0f1424'; x.font = `800 74px ${disp}`; const nm = (S.name || '').trim() || 'Your Name'; x.fillText(nm.length > 26 ? nm.slice(0, 26) + '…' : nm, L, 330);
+    x.fillStyle = '#0f1424'; const nm = (S.name || '').trim() || 'Your Name'; fitFont(x, nm, 800, 74, 34, disp, W - L - 60); x.fillText(nm, L, 330, W - L - 60);
     x.fillStyle = acc; x.fillRect(L, 360, 520, 5);
     x.fillStyle = '#2b3245'; x.font = `400 30px ${body}`; wrapText(x, (M.certificate || {}).statement || '', L, 430, 1060, 42);
     x.fillStyle = '#5b6478'; x.font = `600 20px ${mono}`; x.fillText('SKILLS', L, 600);
     x.font = `500 24px ${body}`; let sx = L, sy = 620; ((M.certificate || {}).skills || []).forEach(s => { const w = x.measureText(s).width + 36; if (sx + w > W - 60) { sx = L; sy += 58; } x.fillStyle = '#eef0f6'; roundRect(x, sx, sy, w, 46, 23); x.fill(); x.fillStyle = '#2b3245'; x.fillText(s, sx + 18, sy + 31); sx += w + 12; });
     const p = S.exam.passed || { date: today(), score: S.exam.best };
-    const rows = [['Issued', p.date], ['Exam score', ok ? p.score + '%' : '—'], ['Credential ID', ok ? credId() : 'Unlocks on completion'], ['Verify', M.domain]];
+    const rows = [['Issued', ok ? p.date : '—'], ['Best exam score', ok ? S.exam.best + '%' : '—'], ['Credential ID', ok ? credId() : 'Unlocks on completion'], ['Verify', M.domain]];
     rows.forEach(([k, v], i) => { const cx = L + (i % 2) * 540, cy = 800 + Math.floor(i / 2) * 88; x.fillStyle = '#8a91a3'; x.font = `600 18px ${mono}`; x.fillText(k.toUpperCase(), cx, cy); x.fillStyle = '#14182a'; x.font = `600 28px ${body}`; x.fillText(v, cx, cy + 38); });
     x.fillStyle = '#8a91a3'; x.font = `500 18px ${body}`; x.fillText('Issued by ZyeemZia · Copyright © ZyeemZia · Independent programme, not affiliated with any other certifying body.', L, H - 70);
     if (!ok) { x.save(); x.translate(W / 2 + 180, H / 2); x.rotate(-0.25); x.fillStyle = 'rgba(180,40,40,.16)'; x.font = `800 120px ${disp}`; x.textAlign = 'center'; x.fillText('PREVIEW', 0, 0); x.restore(); }
@@ -384,33 +484,54 @@
         <div class="card list-card"><div class="eyebrow">Reset</div><p class="muted">Erase lessons, exam results, notes and flashcards on this device.</p><span id="resetSlot"><button class="btn btn-sm" type="button" data-reset="ask">Reset progress</button></span></div></div>`;
   }
   function viewSearch(q) {
-    q = decodeURIComponent(q || '').toLowerCase().trim(); if (!q) return notFound();
+    try { q = decodeURIComponent(q || ''); } catch (e) { q = q || ''; }
+    q = q.toLowerCase().trim();
+    const form = `<form class="search-page" id="searchPage" role="search"><input class="search-in" id="searchPageIn" type="search" value="${esc(q)}" placeholder="Search lessons and terms" aria-label="Search lessons and terms"><button class="btn btn-primary" type="submit">${icon('search')} Search</button></form>`;
+    if (!q) return `<div class="page-head"><div class="eyebrow">Search</div><h1 class="page-title">Find a lesson or term</h1>${form}</div>`;
     const ls = D.lessons.filter(l => (plain(l.title) + ' ' + plain(l.subtitle)).toLowerCase().includes(q));
     const ts = D.terms.filter(t => (t.term + ' ' + t.def).toLowerCase().includes(q));
-    return `<div class="page-head"><div class="eyebrow">Search</div><h1 class="page-title">“${esc(q)}”</h1></div>
+    return `<div class="page-head"><div class="eyebrow">Search · ${ls.length + ts.length} result${ls.length + ts.length === 1 ? '' : 's'}</div><h1 class="page-title">“${esc(q)}”</h1>${form}</div>
       ${!ls.length && !ts.length ? '<div class="empty">Nothing found.</div>' : ''}<div class="lesson-list">${ls.map(l => `<a class="lesson-row" href="#lesson/${l.id}"><span class="ln">${esc(l.module.code.slice(0, 3))}</span><span><b>${md(l.title)}</b><small>${md(l.subtitle)}</small></span></a>`).join('')}</div>
       <div class="terms" style="margin-top:14px">${ts.map(t => `<a class="term" href="#lesson/${t.lesson.id}" style="text-decoration:none;color:inherit"><b>${md(t.term)}</b><span>${md(t.def)}</span></a>`).join('')}</div>`;
   }
   function notFound() { return `<div class="empty"><p>Page not found.</p><a class="btn" href="#home">Home</a></div>`; }
 
   /* ---------------- router ---------------- */
-  function route() {
+  // remember where each page was scrolled, so Back returns to the same spot
+  const scrollMem = {}; let linkNav = false;
+  function route(ev) {
+    if (ev && ev.oldURL) { const old = ev.oldURL.split('#')[1]; scrollMem['#' + (old || '')] = scrollY; }
     const [r, arg] = location.hash.slice(1).split('/');
-    if (EX && !EX.done && r !== 'exam') { /* keep the running exam alive */ }
-    const V = { home: viewHome, '': viewHome, modules: viewModules, module: viewModule, lesson: viewLesson, practice: viewPractice, cards: viewCards, glossary: viewGlossary, exam: () => EX && EX.done && EX.result ? examResultHTML() : viewExam(), capstone: viewCapstone, certificate: viewCertificate, settings: viewSettings, search: viewSearch }[r || ''] || notFound;
-    view.innerHTML = V(arg); renderChrome(); window.scrollTo(0, 0); onScroll();
+    // a finished exam shows its result once; coming back later shows the exam start page again
+    if (EX && EX.done && r !== 'exam' && !EX.unseen) EX = null;
+    const V = { home: viewHome, '': viewHome, modules: viewModules, module: viewModule, lesson: viewLesson, practice: viewPractice, cards: viewCards, glossary: viewGlossary, exam: () => EX && EX.done && EX.result ? (EX.unseen = false, examResultHTML()) : viewExam(), capstone: viewCapstone, certificate: viewCertificate, settings: viewSettings, search: viewSearch }[r || ''] || notFound;
+    view.innerHTML = V(arg); renderChrome();
+    const back = ev && !linkNav && scrollMem[location.hash || '#'] != null; linkNav = false;
+    window.scrollTo({ top: back ? scrollMem[location.hash || '#'] : 0, behavior: 'auto' });
+    if (ev && !reduced()) { view.classList.remove('enter'); void view.offsetWidth; view.classList.add('enter'); }
+    onScroll();
     if (r === 'exam') tickExam();
-    if (r === 'certificate') { drawCert(); if (document.fonts) document.fonts.ready.then(drawCert); }
+    if (r === 'certificate') { drawCert(); certFonts().then(drawCert); }
+    if (r === 'search' && !arg) { const i = $('#searchPageIn'); if (i) i.focus(); }
     const l = r === 'lesson' && D.lessons.find(x => x.id === arg);
     document.title = l ? `${plain(l.title)} · ${M.short}` : `${M.full} (${M.short})`;
   }
-  function render() { const y = scrollY; route(); window.scrollTo(0, y); }
-  function onScroll() { const p = $('#readBar'); if (!location.hash.startsWith('#lesson/')) { p.style.width = '0'; return; } const h = document.documentElement.scrollHeight - innerHeight; p.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%'; }
+  function render() { const y = scrollY; route(); window.scrollTo({ top: y, behavior: 'auto' }); }
+  let scrollRAF = 0;
+  function onScroll() {
+    if (scrollRAF) return;
+    scrollRAF = requestAnimationFrame(() => {
+      scrollRAF = 0; const p = $('#readBar');
+      if (!location.hash.startsWith('#lesson/')) { if (p.style.width !== '0px') p.style.width = '0'; return; }
+      const h = document.documentElement.scrollHeight - innerHeight; p.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+    });
+  }
 
   /* ---------------- events ---------------- */
   document.addEventListener('click', e => {
     const t = e.target;
-    if (t.closest('#themeBtn')) { S.theme = isDark() ? 'light' : 'dark'; save(); applyTheme(); renderChrome(); if (location.hash === '#certificate') drawCert(); return; }
+    const ln = t.closest('a[href^="#"]'); if (ln) linkNav = true;
+    if (t.closest('#themeBtn')) { S.theme = isDark() ? 'light' : 'dark'; save(); applyTheme(); renderChrome(); return; }
     const ts = t.closest('[data-theme-set]'); if (ts) { S.theme = ts.dataset.themeSet; save(); applyTheme(); render(); return; }
     const cp = t.closest('[data-complete]'); if (cp) { S.done[cp.dataset.complete] = today(); S.xp += 20; save(); confetti(); $('#completeSlot').innerHTML = completeHTML(D.lessons.find(l => l.id === cp.dataset.complete)); renderChrome(); if (eligible()) toast('All requirements met. Your certificate is unlocked!', 4000); return; }
     const qo = t.closest('[data-qopt]'); if (qo) { const [q, k] = qo.dataset.qopt.split(':'); quizPick(q, +k); return; }
@@ -424,26 +545,32 @@
       const text = rows.join('\n'); (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied. Paste into a spreadsheet.'), () => toast('Copy blocked by the browser. Select the table and copy it manually.'));
       return;
     }
+    if (t.closest('[data-clicopy]')) { const pre = t.closest('.cli-win').querySelector('pre'); const text = pre.innerText; (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied to clipboard.'), () => { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Selected. Press Ctrl+C to copy.'); }); return; }
     const dr = t.closest('[data-drill]'); if (dr) { startDrill(dr.dataset.drill); return; }
-    if (t.closest('#fcCard')) { fcFlip = !fcFlip; $('#fcCard').classList.toggle('flip', fcFlip); return; }
+    if (t.closest('#fcCard')) { fcFlip = !fcFlip; const c = $('#fcCard'); c.classList.toggle('flip', fcFlip); c.setAttribute('aria-pressed', fcFlip); const ft = fcQueue[0]; if (ft) c.setAttribute('aria-label', `${plain(ft.term)}. ${fcFlip ? plain(ft.def) : 'Press Enter to see the definition'}`); return; }
     const fg = t.closest('[data-fc]'); if (fg) { fcGrade(+fg.dataset.fc); return; }
     if (t.closest('[data-exstart]')) { examStart(); return; }
-    const xa = t.closest('[data-exans]'); if (xa) { EX.ans[EX.i] = +xa.dataset.exans; render(); return; }
-    const xg = t.closest('[data-exgo]'); if (xg) { EX.i = Math.max(0, Math.min(EX.qs.length - 1, +xg.dataset.exgo)); render(); return; }
-    if (t.closest('[data-exflag]')) { EX.flags[EX.i] = !EX.flags[EX.i]; render(); return; }
-    if (t.closest('[data-exsubmit]')) {
+    const xa = t.closest('[data-exans]'); if (xa && EX && !EX.done) { examAnswer(+xa.dataset.exans); return; }
+    const xg = t.closest('[data-exgo]'); if (xg && EX && !EX.done) { examGo(+xg.dataset.exgo); return; }
+    if (t.closest('[data-exflag]') && EX && !EX.done) { examFlag(); return; }
+    if (t.closest('[data-exsubmit]') && EX && !EX.done) {
       const un = EX.qs.length - Object.keys(EX.ans).length;
       $('#exConfirm').innerHTML = `<div class="callout warning" style="margin-top:10px"><span class="ct">Submit?</span>${un ? `${un} question${un > 1 ? 's are' : ' is'} unanswered. ` : ''}You cannot change answers after submitting.<div class="hero-actions" style="margin-top:8px"><button class="btn btn-sm" type="button" data-exback>Keep working</button><button class="btn btn-sm btn-primary" type="button" data-exconfirm>Submit now</button></div></div>`;
-      $('#exConfirm').scrollIntoView({ behavior: 'smooth', block: 'center' }); return;
+      $('#exConfirm').scrollIntoView({ behavior: smooth(), block: 'center' }); const nb = $('[data-exconfirm]'); if (nb) nb.focus({ preventScroll: true }); return;
     }
-    if (t.closest('[data-exback]')) { render(); return; }
+    if (t.closest('[data-exback]')) { paintExam('#exQ'); return; }
     if (t.closest('[data-exconfirm]')) { examSubmit(false); return; }
-    if (t.closest('[data-exreview]')) { examReview(); $('#exReview').scrollIntoView({ behavior: 'smooth' }); return; }
-    const rb = t.closest('[data-rub]'); if (rb) { const [i, j] = rb.dataset.rub.split(':').map(Number); S.cap.rubric[i] = j; save(); $$(`[data-rub^="${i}:"]`).forEach(td => td.classList.toggle('sel', td === rb)); return; }
-    if (t.closest('[data-certdl]')) { if (!eligible()) return; drawCert(); const a = document.createElement('a'); a.download = `${M.short}-certificate-${(S.name || 'name').replace(/\s+/g, '-')}.png`; a.href = $('#certCanvas').toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove(); return; }
+    if (t.closest('[data-exreview]')) { examReview(); $('#exReview').scrollIntoView({ behavior: smooth() }); return; }
+    const rb = t.closest('[data-rub]'); if (rb) { const [i, j] = rb.dataset.rub.split(':').map(Number); S.cap.rubric[i] = j; save(); $$(`[data-rub^="${i}:"]`).forEach(b => { const on = b === rb; b.setAttribute('aria-pressed', on); b.parentElement.classList.toggle('sel', on); }); return; }
+    if (t.closest('[data-certdl]')) {
+      if (!eligible()) return;
+      if (!(S.name || '').trim()) { toast('Type your name first: it is printed on the certificate.'); const i = $('#certName'); if (i) i.focus(); return; }
+      certFonts().then(() => { drawCert(); const a = document.createElement('a'); a.download = `${M.short}-certificate-${S.name.trim().replace(/[^\w\-]+/g, '-')}.png`; a.href = $('#certCanvas').toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove(); });
+      return;
+    }
     const rs = t.closest('[data-reset]'); if (rs) {
       if (rs.dataset.reset === 'ask') $('#resetSlot').innerHTML = `<span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-sm" type="button" data-reset="no">Cancel</button><button class="btn btn-sm" type="button" data-reset="yes" style="background:var(--bad);color:#fff;border-color:transparent">Yes, erase everything</button></span>`;
-      else if (rs.dataset.reset === 'yes') { S = Object.assign(defaults(), { theme: S.theme }); save(); EX = null; render(); toast('Progress reset.'); }
+      else if (rs.dataset.reset === 'yes') { S = Object.assign(defaults(), { theme: S.theme }); save(); clearInterval(exTimer); EX = null; saveEX(); render(); toast('Progress reset.'); }
       else render();
     }
   });
@@ -452,20 +579,36 @@
     if (c.dataset.check) { S.checks[c.dataset.check] = c.checked; save(); }
     if (c.dataset.deliv != null) { S.cap.deliv[c.dataset.deliv] = c.checked; save(); }
   });
-  let noteT;
   document.addEventListener('input', e => {
     const c = e.target;
-    if (c.dataset.note) { S.notes[c.dataset.note] = c.value; clearTimeout(noteT); noteT = setTimeout(save, 400); }
-    if (c.id === 'capNotes') { S.cap.notes = c.value; clearTimeout(noteT); noteT = setTimeout(save, 400); }
-    if (c.id === 'certName') { S.name = c.value; save(); drawCert(); const id = $('#credId'); if (id) id.textContent = credId(); const ln = $('#lnBtn'); if (ln && eligible()) ln.href = linkedinURL(); }
+    if (c.dataset.note) { S.notes[c.dataset.note] = c.value; saveSoon(); }
+    if (c.id === 'capNotes') { S.cap.notes = c.value; saveSoon(); }
+    if (c.id === 'certName') { S.name = c.value; saveSoon(); drawCertSoon(); const ln = $('#lnBtn'); if (ln && eligible()) ln.href = linkedinURL(); }
     if (c.id === 'glSearch') { glQuery = c.value; $('#glList').innerHTML = glossaryList(); }
-    if (c.dataset.cell) { const tpl = c.closest('[data-tpl]').dataset.tpl; const [r, k] = c.dataset.cell.split(':').map(Number); const g = S.cells[tpl] = S.cells[tpl] || []; g[r] = g[r] || []; g[r][k] = c.innerText; clearTimeout(noteT); noteT = setTimeout(save, 400); }
+    if (c.dataset.subnetIn != null) { c.closest('[data-subnet]').querySelector('.sn-out').innerHTML = subnetHTML(c.value); }
+    if (c.dataset.cell) { const tpl = c.closest('[data-tpl]').dataset.tpl; const [r, k] = c.dataset.cell.split(':').map(Number); const g = S.cells[tpl] = S.cells[tpl] || []; g[r] = g[r] || []; g[r][k] = c.innerText; saveSoon(); }
   });
   document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && document.activeElement && document.activeElement.id === 'fcCard') { e.preventDefault(); document.activeElement.click(); } });
-  $('#searchForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#searchInput').value.trim(); if (q) location.hash = '#search/' + encodeURIComponent(q); });
+  document.addEventListener('submit', e => {
+    const f = e.target.closest('#searchForm, #searchPage'); if (!f) return;
+    e.preventDefault(); const q = $('input', f).value.trim(); linkNav = true; location.hash = '#search/' + encodeURIComponent(q);
+  });
   addEventListener('hashchange', route);
   addEventListener('scroll', onScroll, { passive: true });
-  addEventListener('beforeunload', e => { if (EX && !EX.done) { e.preventDefault(); e.returnValue = ''; } });
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (S.theme === 'auto') renderChrome(); });
-  applyTheme(); route();
+  // keep two open tabs in step instead of overwriting each other's progress
+  addEventListener('storage', e => {
+    if (e.key !== KEY) return; S = loadState(); applyTheme(); renderChrome();
+    const a = document.activeElement; const typing = a && (/^(INPUT|TEXTAREA)$/.test(a.tagName) || a.isContentEditable);
+    if (!typing && !(EX && !EX.done)) render();
+  });
+  // never lose the last keystrokes when the tab is closed or hidden
+  const flush = () => { if (saveT) save(); };
+  addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+  const mq = matchMedia('(prefers-color-scheme: dark)'); const onMQ = () => { if (S.theme === 'auto') renderChrome(); };
+  if (mq.addEventListener) mq.addEventListener('change', onMQ); else if (mq.addListener) mq.addListener(onMQ);
+  const disc = $('#disc'); if (disc) disc.textContent = M.disclaimer || '';
+  applyTheme(); restoreEX(); route();
+  // offline + instant repeat visits on the live site
+  if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { /* optional */ }));
 })();

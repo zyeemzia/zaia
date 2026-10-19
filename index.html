@@ -19,9 +19,12 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://zaia.zyeemzia.com/og-image.png">
-<link rel="stylesheet" href="fonts.css?v=4">
-<link rel="stylesheet" href="theme.css?v=4">
-<link rel="stylesheet" href="app.css?v=4">
+<script>try{var z=JSON.parse(localStorage.getItem("zaia.v1")||"{}").theme;if(z==="dark"||z==="light")document.documentElement.setAttribute("data-theme",z)}catch(e){}</script>
+<link rel="stylesheet" href="fonts.css?v=66d4b9ed12">
+<link rel="stylesheet" href="theme.css?v=1786ec68fc">
+<link rel="preload" href="fonts/IBMPlexSans-400-latin-a68a20.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/Sora-500-latin-4fa0aa.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="app.css?v=e42038e120">
 </head>
 <body>
 <header class="topbar">
@@ -30,24 +33,25 @@
     <nav class="mainnav" id="mainnav" aria-label="Main"></nav>
     <div class="top-tools">
       <form class="search" id="searchForm" role="search"><input id="searchInput" type="search" placeholder="Search" aria-label="Search lessons and terms"></form>
+      <a class="icon-btn search-icon" href="#search/" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></a>
       <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle dark mode"></button>
       <a class="prog-chip" id="progChip" href="#settings" aria-label="Your progress"></a>
     </div>
   </div>
   <div class="read-bar" id="readBar"></div>
 </header>
-<main id="view" class="view" tabindex="-1"></main>
+<main id="view" class="view" tabindex="-1"><div class="boot" aria-label="Loading the course"><i></i><i></i><i></i></div></main>
 <footer class="site-foot">
   <div class="row"><span>ZyeemZia™ Artificial Intelligence Architecture (ZAIA)</span><span style="display:flex;gap:16px;flex-wrap:wrap"><a href="book.html" target="_blank" rel="noopener">Book</a><a href="ZAIA-Book.pdf" download>PDF</a><a href="#glossary">Glossary</a><a href="#settings">Settings</a></span><span>Copyright © ZyeemZia</span></div>
   <p class="disc" id="disc"></p>
 </footer>
 <nav class="tabbar" id="tabbar" aria-label="Main mobile"></nav>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="core.js?v=4"></script>
-<script src="data/track.js?v=4"></script>
-<script src="data/m1-4.js?v=4"></script>
-<script src="data/m5-8.js?v=4"></script>
-<script src="app.js?v=4"></script>
-<script>document.getElementById('disc').textContent = (window.TRACK.meta || {}).disclaimer || '';</script>
+<script defer src="core.js?v=756f940ff2"></script>
+<script defer src="family.js?v=a2eb85d155"></script>
+<script defer src="data/track.js?v=d47acbd6a5"></script>
+<script defer src="data/m1-4.js?v=0111792d8f"></script>
+<script defer src="data/m5-8.js?v=774bbd9209"></script>
+<script defer src="app.js?v=3ad89d2d78"></script>
 </body>
 </html>

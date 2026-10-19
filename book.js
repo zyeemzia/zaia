@@ -50,13 +50,21 @@
       case 'compare': return `<div class="blk">${T(b)}<div class="cmp" style="grid-template-columns:repeat(${b.columns.length},1fr)">${b.columns.map(c => `<div><b>${md(c.title)}</b><ul>${c.items.map(x => `<li>${md(x)}</li>`).join('')}</ul></div>`).join('')}</div></div>`;
       case 'flow': return `<div class="blk">${T(b)}<div class="flowx">${b.items.map((x, k) => `<div><span class="k">${num(k)}</span><b>${md(x.label)}</b>${x.text ? `<p>${md(x.text)}</p>` : ''}</div>`).join('<i>→</i>')}</div></div>`;
       case 'layers': return `<div class="blk">${T(b)}<div class="layers">${b.items.map(x => `<div><b>${md(x.label)}</b><span>${x.parts.map(p => `<em>${md(p)}</em>`).join('')}</span></div>`).join('')}</div></div>`;
-      case 'formula': return `<div class="blk">${T(b)}<table class="fm"><thead><tr><th>Measure</th><th>Formula</th><th>What it tells you</th></tr></thead><tbody>${b.items.map(x => `<tr><td><b>${md(x.name)}</b></td><td><code>${esc(x.expr)}</code></td><td>${md(x.meaning)}</td></tr>`).join('')}</tbody></table></div>`;
+      case 'formula': return `<div class="blk">${T(b)}<table class="fm"><thead><tr><th>Measure</th><th>Formula</th><th>What it tells you</th></tr></thead><tbody>${b.items.map(x => `<tr><td><b>${md(x.name)}</b></td><td><code>${esc(plain(x.expr))}</code></td><td>${md(x.meaning)}</td></tr>`).join('')}</tbody></table></div>`;
       case 'case': { ctx.key.push({ kind: 'Case study', title: b.title, body: b.answer }); return `<div class="case"><div class="case-h">Case study · ${md(b.title)}</div><p>${md(b.context)}</p><ol>${b.questions.map(q => `<li>${md(q)}<div class="write-lines"></div></li>`).join('')}</ol><p class="hint">Model answer: module answer key.</p></div>`; }
       case 'scenario': { const best = b.options.findIndex(o => o.best); ctx.key.push({ kind: 'Scenario', title: b.title || plain(b.situation).slice(0, 70) + '…', body: `**${KEY[best]}** is best. ${b.options[best].feedback}` }); return `<div class="scenario"><div class="sc-h">Scenario · decide${b.title ? ' · ' + md(b.title) : ''}</div><p>${md(b.situation)}</p><div class="sc-o">${b.options.map((o, k) => `<div><b>${KEY[k]}</b> ${md(o.text)}</div>`).join('')}</div><p class="hint">Circle your choice. Answer and feedback: module answer key.</p></div>`; }
       case 'checklist': return `<div class="kp check">${`<h3 class="b-title">${md(b.title)}</h3>`}<ul>${b.items.map(x => `<li>☐ ${md(x)}</li>`).join('')}</ul></div>`;
       case 'template': return `<div class="tpl"><div class="tpl-h"><span>Template</span><b>${md(b.title)}</b></div><p class="hint">${md(b.purpose)}</p><table><thead><tr>${b.columns.map(c => `<th>${md(c)}</th>`).join('')}</tr></thead><tbody>${(b.example || []).map(r => `<tr class="ex">${r.map(c => `<td>${md(c)}</td>`).join('')}</tr>`).join('')}${Array.from({ length: b.rows || 4 }, () => `<tr class="blank">${b.columns.map(() => '<td></td>').join('')}</tr>`).join('')}</tbody></table></div>`;
       case 'reflection': return `<div class="refl"><span class="ct">Reflect</span><p>${md(b.prompt)}</p><div class="write-lines tall"></div></div>`;
       case 'terms': return `<div class="blk"><h3 class="b-title">Key terms</h3><dl class="terms">${b.items.map(x => `<div><dt>${md(x.term)}</dt><dd>${md(x.def)}</dd></div>`).join('')}</dl></div>`;
+      case 'cli': return `<div class="cli">${T(b)}<div class="cli-h">${esc(b.device)}</div><pre>${b.lines.map(l => esc(l)).join('\n')}</pre>${b.note ? `<p class="hint">${md(b.note)}</p>` : ''}</div>`;
+      case 'tool': {
+        const tasks = ['192.168.10.77/26', '10.45.130.9/20', '172.20.5.200/27', '10.0.0.129/25', '192.168.1.5/30', '172.16.99.1/22'];
+        return `<div class="tpl sn"><div class="tpl-h"><span>Practice</span><b>${b.title ? md(b.title) : 'Subnetting worksheet'}</b></div>${b.prompt ? `<p class="hint">${md(b.prompt)}</p>` : ''}
+          <table><thead><tr><th>Address / prefix</th><th>Network</th><th>Mask</th><th>First host</th><th>Last host</th><th>Broadcast</th><th>Hosts</th></tr></thead><tbody>
+          ${tasks.map(t => `<tr class="blank"><td><code>${t}</code></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}</tbody></table>
+          <p class="hint">Answers: use the subnet calculator on the course website, or check with the answer key at the end of the book.</p></div>`;
+      }
       case 'quiz': { const start = ctx.quiz.length + 1; b.items.forEach(q => ctx.quiz.push(q)); return `<div class="quiz"><div class="q-h">Knowledge check</div><ol start="${start}">${b.items.map(q => `<li>${md(q.q)}<div class="qo">${q.options.map((o, k) => `<span><b>${KEY[k]}</b> ${md(o)}</span>`).join('')}</div></li>`).join('')}</ol></div>`; }
       default: return '';
     }
@@ -103,13 +111,28 @@
       <div class="cert-meta"><div>Issued<span></span></div><div>Credential ID<span></span></div></div>
       <p class="hint">Earn the official certificate online at ${esc(M.domain)}: complete every lesson and pass the exam. This page is for your printed record.</p></div></div></section>`;
   }
+  function academy() {
+    const F = window.ZZ_FAMILY || []; if (!F.length) return '';
+    const net = F.filter(f => f.path === 'Networking').sort((a, b) => a.tier - b.tier), other = F.filter(f => f.path !== 'Networking');
+    const card = f => `<div class="ac ${f.code === M.code ? 'me' : ''} ${f.soon && f.code !== M.code ? 'soon' : ''}"><span>${esc(f.level)}</span><b>${esc(f.code)}</b><small>ZyeemZia™ ${esc(f.name)}</small><em>${f.soon && f.code !== M.code ? 'Coming soon' : esc(f.domain)}</em></div>`;
+    return `<section class="flow"><div class="eyebrow">ZyeemZia™ Academy</div><h1 class="h-page">Your certification path</h1>
+      <p>Each ZyeemZia™ track stands on its own, and together they form a path from first network to expert design, plus leadership and AI architecture. Take the next step at the sites below.</p>
+      <h3 class="b-title">Networking ladder</h3><div class="ac-row">${net.map(card).join('<i>→</i>')}</div>
+      <h3 class="b-title">Leadership & AI</h3><div class="ac-row">${other.map(card).join('')}</div></section>`;
+  }
+  function subnetKey() {
+    if (!D.lessons.some(l => l.blocks.some(b => b.type === 'tool'))) return '';
+    const tasks = ['192.168.10.77/26', '10.45.130.9/20', '172.20.5.200/27', '10.0.0.129/25', '192.168.1.5/30', '172.16.99.1/22'];
+    return `<section class="flow"><div class="eyebrow">Answer key</div><h1 class="h-page">Subnetting worksheet answers</h1><table><thead><tr><th>Address / prefix</th><th>Network</th><th>Mask</th><th>First host</th><th>Last host</th><th>Broadcast</th><th>Hosts</th></tr></thead><tbody>
+      ${tasks.map(t => { const r = window.ZZ.subnet(t); return `<tr><td><code>${t}</code></td><td>${r.network}</td><td>${r.mask}</td><td>${r.first}</td><td>${r.last}</td><td>${r.broadcast}</td><td>${r.hosts}</td></tr>`; }).join('')}</tbody></table></section>`;
+  }
   function notes() { return `<section class="flow"><div class="eyebrow">Notes</div><h1 class="h-page">My notes</h1><div class="write-lines notes"></div></section>`; }
 
   const header = document.createElement('style');
   header.textContent = `@page { @top-right { content: "${(M.short + ' · ' + M.full).replace(/"/g, '')}"; font: 500 8pt "IBM Plex Mono", monospace; color: #8a91a3; } } @page cover { @top-right { content: none; } } @page full { @top-right { content: none; } }`;
   document.head.appendChild(header);
   const render = () => {
-    document.getElementById('book').innerHTML = cover() + intro() + toc() + signaturePage() + D.modules.map(moduleSection).join('') + glossary() + capstone() + exam() + certificate() + notes();
+    document.getElementById('book').innerHTML = cover() + intro() + toc() + signaturePage() + D.modules.map(moduleSection).join('') + glossary() + capstone() + exam() + subnetKey() + academy() + certificate() + notes();
     document.body.setAttribute('data-ready', '1');
   };
   const faces = ['400 16px "IBM Plex Sans"', '600 16px "IBM Plex Sans"', '700 16px "IBM Plex Sans"', '400 16px "IBM Plex Mono"', '600 16px "IBM Plex Mono"', '700 16px Archivo', '800 16px Archivo', '700 16px Sora', '800 16px Sora'];

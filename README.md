@@ -9,7 +9,7 @@ flashcards, a timed certification exam, a capstone project and a downloadable ce
 
 | Path | What |
 |---|---|
-| `index.html` | Interactive course (works offline after loading) |
+| `index.html` | Interactive course (works offline after the first visit) |
 | `book.html` | Printable book (Ctrl + P → Save as PDF) |
 | `data/track.js` | Track settings: exam rules, capstone, certificate |
 | `data/m*.js` | Modules, lessons and the exam bank |
