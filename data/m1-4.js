@@ -150,6 +150,58 @@ TRACK.modules.push({
      "title": "Old and new together"
     },
     {
+     "type": "timeline",
+     "title": "How the AI families arrived",
+     "caption": "Each wave added a new tool rather than replacing the old ones — rules, classical ML, deep learning and generative models all still run in production today. The most recent shifts are about how models are used (reasoning, tools, agents), not only how big they are.",
+     "items": [
+      {
+       "when": "1956",
+       "label": "AI named as a field",
+       "text": "Early work on symbolic reasoning, search and planning."
+      },
+      {
+       "when": "1980s",
+       "label": "Expert systems",
+       "text": "Hand-written rules in business use; powerful but brittle to maintain."
+      },
+      {
+       "when": "1990s–2000s",
+       "label": "Statistical ML",
+       "text": "Learning from data: boosted trees, support vector machines, recommenders."
+      },
+      {
+       "when": "2012",
+       "label": "Deep learning breakthrough",
+       "text": "GPU-trained neural networks leap ahead on image recognition benchmarks."
+      },
+      {
+       "when": "2017",
+       "label": "Transformer architecture",
+       "text": "Attention-based models that underpin today's language models."
+      },
+      {
+       "when": "2020",
+       "label": "Large language models",
+       "text": "Scaled pretraining shows that one model can do many tasks from a prompt."
+      },
+      {
+       "when": "2022",
+       "label": "Chat assistants go mainstream",
+       "text": "Instruction-tuned conversational models reach the general public."
+      },
+      {
+       "when": "2024",
+       "label": "Reasoning models",
+       "text": "Models trained to spend extra compute thinking before they answer."
+      },
+      {
+       "when": "2025–26",
+       "label": "Agentic systems",
+       "text": "Models plan and call tools through open connection protocols; rules for general-purpose models start to apply."
+      }
+     ]
+    },
+    {
      "type": "framework",
      "items": [
       {
@@ -230,6 +282,113 @@ TRACK.modules.push({
      "title": "The life of a single AI request"
     },
     {
+     "type": "topology",
+     "title": "Where the model actually sits",
+     "caption": "The model is one box among many: the application owns rules and guardrails, the gateway hides which model answers, and context comes from retrieval and features. Every hop reports into tracing, which is how you later explain cost, latency and quality.",
+     "nodes": [
+      {
+       "id": "u",
+       "kind": "user",
+       "label": "Customer",
+       "sub": "web or mobile app",
+       "x": 1,
+       "y": 6
+      },
+      {
+       "id": "app",
+       "kind": "server",
+       "label": "Application",
+       "sub": "auth, rules, guardrails",
+       "x": 1,
+       "y": 4
+      },
+      {
+       "id": "gw",
+       "kind": "gateway",
+       "label": "AI gateway",
+       "sub": "routing, quotas, logging",
+       "x": 3.5,
+       "y": 2
+      },
+      {
+       "id": "m1",
+       "kind": "model",
+       "label": "Frontier model",
+       "sub": "managed API",
+       "x": 6,
+       "y": 1
+      },
+      {
+       "id": "m2",
+       "kind": "model",
+       "label": "Small model",
+       "sub": "self-hosted",
+       "x": 6,
+       "y": 3
+      },
+      {
+       "id": "vdb",
+       "kind": "db",
+       "label": "Vector index",
+       "sub": "documents for context",
+       "x": 3.5,
+       "y": 4
+      },
+      {
+       "id": "fs",
+       "kind": "db",
+       "label": "Feature store",
+       "sub": "fresh features",
+       "x": 3.5,
+       "y": 6
+      },
+      {
+       "id": "obs",
+       "kind": "monitor",
+       "label": "Tracing",
+       "sub": "traces, cost, evals",
+       "x": 6,
+       "y": 5
+      }
+     ],
+     "links": [
+      {
+       "a": "u",
+       "b": "app",
+       "label": "HTTPS"
+      },
+      {
+       "a": "app",
+       "b": "gw",
+       "label": "model calls"
+      },
+      {
+       "a": "gw",
+       "b": "m1"
+      },
+      {
+       "a": "gw",
+       "b": "m2"
+      },
+      {
+       "a": "app",
+       "b": "vdb",
+       "label": "retrieve"
+      },
+      {
+       "a": "app",
+       "b": "fs",
+       "label": "features"
+      },
+      {
+       "a": "gw",
+       "b": "obs",
+       "label": "traces",
+       "style": "dashed"
+      }
+     ]
+    },
+    {
      "type": "callout",
      "kind": "pro",
      "text": "Run design reviews layer by layer: for each ZAIA layer ask **What did we decide? What is the biggest risk? Who owns it?** Gaps jump out quickly — most teams discover they have no owner for evaluation data or cost controls.",
@@ -259,6 +418,16 @@ TRACK.modules.push({
        "feedback": "Enormous cost and time for a problem that does not need generation at all.",
        "best": false
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "An AI product is a **system** — data, models, prompts, retrieval, tools, serving and controls — and most failures are system failures, not model failures.",
+      "AI ⊃ machine learning ⊃ deep learning ⊃ generative AI; match the family to the problem, and keep classical ML for tabular decisions.",
+      "The architect owns **trade-offs and decisions** across the whole system and must back each one with evidence.",
+      "The ZAIA Stack is a review agenda: for each layer ask what was decided, what the biggest risk is and who owns it."
      ]
     },
     {
@@ -405,6 +574,49 @@ TRACK.modules.push({
      "title": "Solution looking for a problem"
     },
     {
+     "type": "text",
+     "text": "The fit test filters ideas; it does not rank them. When several candidates pass, place each on two axes — **business value** if it works, and **feasibility** given today's data, skills and risk — and invest in that order. Feasibility can be improved (collect outcomes, clean data), so a strategic bet today can become a quick win next year."
+    },
+    {
+     "type": "matrix",
+     "title": "Use-case prioritisation matrix",
+     "caption": "Start top-right, run top-left ideas as time-boxed pilots with kill criteria, and resist gold-plating the bottom-right. Re-score the portfolio each quarter as data and models improve.",
+     "x": "Feasibility (data, skills, risk)",
+     "y": "Business value",
+     "quadrants": [
+      {
+       "title": "Strategic bets",
+       "items": [
+        "High value, hard to deliver",
+        "Fix data gaps first",
+        "Pilot with kill criteria"
+       ]
+      },
+      {
+       "title": "Do first",
+       "items": [
+        "Clear value, data ready",
+        "Passes the fit test",
+        "Measurable baseline"
+       ]
+      },
+      {
+       "title": "Drop or park",
+       "items": [
+        "Little value, hard to build",
+        "Revisit only if context changes"
+       ]
+      },
+      {
+       "title": "Cheap wins",
+       "items": [
+        "Easy but small",
+        "Buy or configure, don't build"
+       ]
+      }
+     ]
+    },
+    {
      "type": "steps",
      "items": [
       {
@@ -477,46 +689,59 @@ TRACK.modules.push({
      "title": "From business goal to AI task"
     },
     {
-     "type": "layers",
-     "items": [
-      {
-       "label": "Business outcomes",
-       "parts": [
-        "Fraud loss per 1,000 transactions",
-        "Revenue, cost-to-serve, CSAT"
-       ]
-      },
-      {
-       "label": "Product and user metrics",
-       "parts": [
-        "Adoption, task success rate",
-        "Escalation and override rate"
-       ]
-      },
-      {
-       "label": "Model quality",
-       "parts": [
-        "Precision, recall, F1, NDCG",
-        "Answer correctness, groundedness"
-       ]
-      },
-      {
-       "label": "System metrics",
-       "parts": [
-        "p95 latency, availability",
-        "Cost per request, throughput"
-       ]
-      },
-      {
-       "label": "Guardrail metrics",
-       "parts": [
-        "False-block rate on good customers",
-        "Fairness gaps across groups",
-        "Policy violations"
-       ]
-      }
-     ],
-     "title": "The success metric tree"
+     "type": "tree",
+     "title": "The success metric tree (fraud example)",
+     "caption": "Every leaf is something you can measure this week; together they must roll up to the business outcome at the root. The guardrail branch stops the team from improving the root at the expense of genuine customers.",
+     "root": {
+      "label": "Fraud loss per 1,000 txns",
+      "text": "business outcome (lagging)",
+      "children": [
+       {
+        "label": "Product and users",
+        "children": [
+         {
+          "label": "Investigator adoption"
+         },
+         {
+          "label": "Override rate"
+         }
+        ]
+       },
+       {
+        "label": "Model quality",
+        "children": [
+         {
+          "label": "Recall at fixed FPR"
+         },
+         {
+          "label": "Precision in top-k"
+         }
+        ]
+       },
+       {
+        "label": "System",
+        "children": [
+         {
+          "label": "p99 scoring latency"
+         },
+         {
+          "label": "Cost per 1,000 scores"
+         }
+        ]
+       },
+       {
+        "label": "Guardrails",
+        "children": [
+         {
+          "label": "False-block rate"
+         },
+         {
+          "label": "Gaps across segments"
+         }
+        ]
+       }
+      ]
+     }
     },
     {
      "type": "callout",
@@ -593,6 +818,17 @@ TRACK.modules.push({
      "kind": "pro",
      "text": "Write **kill criteria** into the canvas before you build: “If, after eight weeks, recall at our review capacity is not at least 20% better than the rule engine, we stop.” Agreeing this early protects the team from sunk-cost pressure later.",
      "title": "Decide how you will stop"
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Frame before you build: name the **decision**, the actor and moment, the task type, the data and the metrics.",
+      "Run the six-question fit test; rules or plain software often beat AI when a formula fully defines the answer.",
+      "Every model must beat a **baseline**, and false positives and false negatives must be priced separately.",
+      "Build a metric tree that links model metrics (leading) to business outcomes (lagging), with guardrail metrics alongside.",
+      "Agree **kill criteria** before the first sprint so sunk cost never decides for you."
+     ]
     },
     {
      "type": "quiz",
@@ -726,6 +962,11 @@ TRACK.modules.push({
        "Distillation, cascades, caching, streaming, precomputation"
       ],
       [
+       "Reasoning depth vs latency and cost",
+       "Reasoning models spend extra generated tokens thinking before they answer",
+       "Use reasoning only for hard requests, cap the thinking budget, route simple requests to fast models"
+      ],
+      [
        "Accuracy vs cost",
        "Better models cost more per call",
        "Route easy requests to small models, cap output length, batch offline work"
@@ -817,6 +1058,35 @@ TRACK.modules.push({
      "title": "Quick architecture arithmetic"
     },
     {
+     "type": "chart",
+     "kind": "bar",
+     "title": "Every synchronous dependency adds downtime",
+     "caption": "Computed for a request path where each dependency is 99.5% available: one dependency means about 44 hours of expected downtime a year, six mean about 260 hours (97.0% availability). This is why fallbacks and asynchronous designs matter.",
+     "labels": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+     ],
+     "series": [
+      {
+       "name": "Expected downtime",
+       "values": [
+        43.8,
+        87.4,
+        130.7,
+        173.9,
+        216.8,
+        259.5
+       ]
+      }
+     ],
+     "unit": " h",
+     "yLabel": "Hours a year by number of dependencies"
+    },
+    {
      "type": "compare",
      "columns": [
       {
@@ -882,6 +1152,33 @@ TRACK.modules.push({
      "title": "Beware the average"
     },
     {
+     "type": "chart",
+     "kind": "bar",
+     "title": "Why the mean misleads",
+     "caption": "Illustrative numbers for one service: the mean of 400 ms looks healthy, yet one request in twenty waits about 4 seconds. Targets and alerts belong on p95 and p99.",
+     "labels": [
+      "p50",
+      "mean",
+      "p90",
+      "p95",
+      "p99"
+     ],
+     "series": [
+      {
+       "name": "Latency",
+       "values": [
+        170,
+        400,
+        380,
+        4000,
+        6000
+       ]
+      }
+     ],
+     "unit": " ms",
+     "yLabel": "Response time"
+    },
+    {
      "type": "keypoints",
      "items": [
       "**Global** explanations describe how the model behaves overall — feature importance, documented limitations.",
@@ -890,6 +1187,17 @@ TRACK.modules.push({
       "**Process transparency** — model cards, decision records and audit logs that show how the system was built and governed."
      ],
      "title": "Four levels of explainability"
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "AI systems inherit classic quality attributes and add new ones: probabilistic outputs, drift and variable cost per call.",
+      "Make trade-offs explicit — accuracy, latency, cost, reliability, scalability, privacy, explainability and reasoning depth pull against each other.",
+      "Write **quality-attribute scenarios** with a measurable response measure so requirements can be tested.",
+      "Serial dependencies multiply unavailability; specify latency as p95/p99 and time to first token, never as an average.",
+      "Choose online, streaming or batch inference by how fresh the result must be, not by habit."
+     ]
     },
     {
      "type": "quiz",
@@ -1056,6 +1364,56 @@ TRACK.modules.push({
      "title": "Eight sourcing factors"
     },
     {
+     "type": "tree",
+     "title": "A first-cut sourcing decision tree",
+     "caption": "Use it to pick the options worth evaluating, not to skip the evaluation: the eight sourcing factors and your own test-set results make the final call, recorded in an ADR.",
+     "root": {
+      "label": "Where should the intelligence come from?",
+      "children": [
+       {
+        "label": "Commodity need",
+        "text": "notes, writing aids",
+        "children": [
+         {
+          "label": "Buy a SaaS feature"
+         }
+        ]
+       },
+       {
+        "label": "General language task",
+        "text": "value is in your data and workflow",
+        "children": [
+         {
+          "label": "Low or spiky volume",
+          "children": [
+           {
+            "label": "Managed model API"
+           }
+          ]
+         },
+         {
+          "label": "Residency or high steady volume",
+          "children": [
+           {
+            "label": "Self-host open-weight"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "label": "Unique proprietary data",
+        "text": "fraud, ranking, forecasting",
+        "children": [
+         {
+          "label": "Build and train your own"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
      "type": "formula",
      "items": [
       {
@@ -1075,6 +1433,45 @@ TRACK.modules.push({
       }
      ],
      "title": "Break-even arithmetic"
+    },
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "API versus self-hosting: the break-even point",
+     "caption": "Illustrative: 12,000 a month of fixed self-hosting cost (GPUs, platform, people) at 0.0004 per request, against an API at 0.0010 per request. The lines cross at 20 million requests a month; below that the API is cheaper.",
+     "labels": [
+      "0",
+      "8M",
+      "16M",
+      "24M",
+      "32M",
+      "40M"
+     ],
+     "series": [
+      {
+       "name": "Managed API",
+       "values": [
+        0,
+        8000,
+        16000,
+        24000,
+        32000,
+        40000
+       ]
+      },
+      {
+       "name": "Self-hosted",
+       "values": [
+        12000,
+        15200,
+        18400,
+        21600,
+        24800,
+        28000
+       ]
+      }
+     ],
+     "yLabel": "Monthly cost by requests per month"
     },
     {
      "type": "callout",
@@ -1311,6 +1708,16 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Four sourcing options — buy, managed API, self-hosted open-weight, build — trade control against cost, speed and risk.",
+      "Compute the **break-even volume**, including engineer time in the fixed cost, before committing to GPUs.",
+      "Route model calls through a gateway and keep prompts and eval sets versioned so switching is a test run, not a rewrite.",
+      "Record each significant choice in an **ADR** with evidence, consequences and revisit triggers."
+     ]
+    },
+    {
      "type": "quiz",
      "items": [
       {
@@ -1524,6 +1931,134 @@ TRACK.modules.push({
      "title": "A modern AI data pipeline (medallion-style layering)"
     },
     {
+     "type": "topology",
+     "title": "A reference data platform for AI",
+     "caption": "Every source lands once in the lakehouse and is refined through bronze, silver and gold layers; features, retrieval indexes and training sets are all built from the same governed tables. The catalogue records quality results and lineage for every hop.",
+     "nodes": [
+      {
+       "id": "db",
+       "kind": "db",
+       "label": "Core database",
+       "sub": "operational records",
+       "x": 0,
+       "y": 1
+      },
+      {
+       "id": "ev",
+       "kind": "process",
+       "label": "Event stream",
+       "sub": "app and payment events",
+       "x": 0,
+       "y": 3
+      },
+      {
+       "id": "docs",
+       "kind": "storage",
+       "label": "Documents",
+       "sub": "PDFs, scans, audio",
+       "x": 0,
+       "y": 5
+      },
+      {
+       "id": "ing",
+       "kind": "process",
+       "label": "Ingestion",
+       "sub": "CDC, connectors, file drops",
+       "x": 2,
+       "y": 3
+      },
+      {
+       "id": "lake",
+       "kind": "storage",
+       "label": "Lakehouse",
+       "sub": "bronze → silver → gold",
+       "x": 4,
+       "y": 3
+      },
+      {
+       "id": "cat",
+       "kind": "monitor",
+       "label": "Catalogue",
+       "sub": "quality, lineage, access",
+       "x": 4,
+       "y": 5
+      },
+      {
+       "id": "fs",
+       "kind": "db",
+       "label": "Feature store",
+       "sub": "offline + online",
+       "x": 6,
+       "y": 1
+      },
+      {
+       "id": "vec",
+       "kind": "db",
+       "label": "Vector index",
+       "sub": "chunks + embeddings",
+       "x": 6,
+       "y": 3
+      },
+      {
+       "id": "tr",
+       "kind": "process",
+       "label": "Training",
+       "sub": "versioned datasets",
+       "x": 6,
+       "y": 5
+      }
+     ],
+     "links": [
+      {
+       "a": "db",
+       "b": "ing",
+       "label": "CDC"
+      },
+      {
+       "a": "ev",
+       "b": "ing",
+       "label": "events"
+      },
+      {
+       "a": "docs",
+       "b": "ing",
+       "label": "files"
+      },
+      {
+       "a": "ing",
+       "b": "lake",
+       "label": "land raw"
+      },
+      {
+       "a": "lake",
+       "b": "fs"
+      },
+      {
+       "a": "lake",
+       "b": "vec"
+      },
+      {
+       "a": "lake",
+       "b": "tr"
+      },
+      {
+       "a": "lake",
+       "b": "cat",
+       "style": "dashed"
+      }
+     ],
+     "zones": [
+      {
+       "label": "Governed platform",
+       "x": 2,
+       "y": 3,
+       "w": 3,
+       "h": 3,
+       "tone": "accent"
+      }
+     ]
+    },
+    {
      "type": "callout",
      "kind": "definition",
      "text": "An architecture that keeps data in open columnar files (such as Parquet) on low-cost object storage while adding warehouse-like capabilities — transactions, schemas, governance and fast SQL — through an open table format and a catalogue. One copy of the data then serves BI, data science and AI workloads.",
@@ -1614,6 +2149,16 @@ TRACK.modules.push({
      "kind": "pro",
      "text": "Make every pipeline **idempotent and replayable**: running it twice gives the same result, and you can rebuild any table from the raw layer. This turns bug fixes and new features into a rerun instead of a crisis.",
      "title": "Build for reruns"
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Everything an AI system does is downstream of data: it must arrive on time, in shape, with known quality and traceable origin.",
+      "Let **freshness** choose the pattern — batch for training and nightly scoring, streaming for seconds-level features.",
+      "ELT on a lakehouse with an open table format gives one governed copy of the data, with snapshots for reproducible training.",
+      "Keep raw data immutable and pipelines idempotent so any table can be rebuilt by a rerun."
+     ]
     },
     {
      "type": "quiz",
@@ -1802,6 +2347,56 @@ TRACK.modules.push({
      "rows": 5
     },
     {
+     "type": "sequence",
+     "title": "A data contract blocks a breaking change",
+     "caption": "The contract check runs in the producer's own pipeline, so the poisha-versus-taka change fails before it reaches any model. The fix is a new contract version with notice, not a silent edit.",
+     "actors": [
+      "Producer team",
+      "Contract CI",
+      "Pipeline",
+      "Consumer team"
+     ],
+     "steps": [
+      {
+       "from": 0,
+       "to": 1,
+       "label": "Change: amount sent in poisha"
+      },
+      {
+       "from": 1,
+       "to": 1,
+       "label": "Check schema and semantic rules"
+      },
+      {
+       "from": 1,
+       "to": 0,
+       "label": "Fail: amount range breaks v2",
+       "reply": true
+      },
+      {
+       "from": 0,
+       "to": 3,
+       "label": "Propose v3 with 30-day notice"
+      },
+      {
+       "from": 3,
+       "to": 0,
+       "label": "Agree; migrate features",
+       "reply": true
+      },
+      {
+       "from": 0,
+       "to": 2,
+       "label": "Publish v3 alongside v2"
+      },
+      {
+       "from": 2,
+       "to": 2,
+       "label": "Validate every load against v3"
+      }
+     ]
+    },
+    {
      "type": "table",
      "head": [
       "Strategy",
@@ -1848,6 +2443,38 @@ TRACK.modules.push({
       ]
      ],
      "title": "Labeling strategies"
+    },
+    {
+     "type": "cycle",
+     "title": "The labeling loop",
+     "center": "Label quality",
+     "caption": "Agreement is measured inside the loop, not once at the end: low kappa sends you back to the guideline before more labels are produced. Active learning chooses which items humans see next.",
+     "items": [
+      {
+       "label": "Write guideline",
+       "text": "Definitions, examples, rules for mixed and ambiguous cases."
+      },
+      {
+       "label": "Select items",
+       "text": "Active learning picks uncertain or rare items; keep a random slice too."
+      },
+      {
+       "label": "Pre-label",
+       "text": "A model drafts labels where that is safe; hide drafts on the gold set."
+      },
+      {
+       "label": "Human review",
+       "text": "Annotators confirm or correct; overlap a share for agreement."
+      },
+      {
+       "label": "Measure agreement",
+       "text": "Kappa and gold-set accuracy; adjudicate disagreements."
+      },
+      {
+       "label": "Train and evaluate",
+       "text": "Retrain, then feed errors back into the guideline and selection."
+      }
+     ]
     },
     {
      "type": "formula",
@@ -1907,6 +2534,17 @@ TRACK.modules.push({
        "feedback": "Model labels can help as drafts, but without checks you cannot know if they are right — and you still lack a clear definition.",
        "best": false
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "A model trained on flawed data learns the flaw — define quality across seven dimensions, including **representativeness**.",
+      "Silent semantic failures are the dangerous ones; catch them with distribution checks and data contracts enforced in CI.",
+      "A **data contract** turns schema, meaning, quality, freshness, privacy and change policy into a testable promise.",
+      "Measure annotator agreement (Cohen's kappa); low agreement means fix the guideline, not hire more annotators.",
+      "Model-assisted labeling speeds work up but invites automation bias — keep gold sets and spot checks."
      ]
     },
     {
@@ -2096,6 +2734,125 @@ TRACK.modules.push({
      "title": "Two stores, one definition"
     },
     {
+     "type": "topology",
+     "title": "One definition, two serving paths",
+     "caption": "The registry holds a single definition that both the streaming and batch jobs execute, which is what keeps training and serving consistent. The online store answers in milliseconds; the offline store keeps history for point-in-time training sets.",
+     "nodes": [
+      {
+       "id": "ev",
+       "kind": "process",
+       "label": "Event stream",
+       "sub": "live transactions",
+       "x": 0,
+       "y": 1
+      },
+      {
+       "id": "lake",
+       "kind": "storage",
+       "label": "Lakehouse",
+       "sub": "historical tables",
+       "x": 0,
+       "y": 4
+      },
+      {
+       "id": "sp",
+       "kind": "process",
+       "label": "Stream jobs",
+       "sub": "windowed aggregates",
+       "x": 2,
+       "y": 1
+      },
+      {
+       "id": "bj",
+       "kind": "process",
+       "label": "Batch jobs",
+       "sub": "backfills, daily features",
+       "x": 2,
+       "y": 4
+      },
+      {
+       "id": "reg",
+       "kind": "doc",
+       "label": "Feature registry",
+       "sub": "one versioned definition",
+       "x": 3,
+       "y": 2.5
+      },
+      {
+       "id": "on",
+       "kind": "db",
+       "label": "Online store",
+       "sub": "latest value, ms lookups",
+       "x": 4,
+       "y": 1
+      },
+      {
+       "id": "off",
+       "kind": "db",
+       "label": "Offline store",
+       "sub": "full history",
+       "x": 4,
+       "y": 4
+      },
+      {
+       "id": "inf",
+       "kind": "server",
+       "label": "Scoring service",
+       "sub": "real-time inference",
+       "x": 6,
+       "y": 1
+      },
+      {
+       "id": "tr",
+       "kind": "process",
+       "label": "Training",
+       "sub": "point-in-time joins",
+       "x": 6,
+       "y": 4
+      }
+     ],
+     "links": [
+      {
+       "a": "ev",
+       "b": "sp"
+      },
+      {
+       "a": "lake",
+       "b": "bj"
+      },
+      {
+       "a": "reg",
+       "b": "sp",
+       "style": "dashed"
+      },
+      {
+       "a": "reg",
+       "b": "bj",
+       "style": "dashed"
+      },
+      {
+       "a": "sp",
+       "b": "on",
+       "label": "write"
+      },
+      {
+       "a": "bj",
+       "b": "off",
+       "label": "write"
+      },
+      {
+       "a": "on",
+       "b": "inf",
+       "label": "lookup"
+      },
+      {
+       "a": "off",
+       "b": "tr",
+       "label": "as-of join"
+      }
+     ]
+    },
+    {
      "type": "callout",
      "kind": "definition",
      "text": "A gap between the data a model saw in training and the data it receives in production, caused by the pipeline rather than the world changing. The model looks great offline and underperforms live.",
@@ -2117,6 +2874,33 @@ TRACK.modules.push({
      "kind": "insight",
      "text": "**Point-in-time correctness** means every training example uses feature values exactly as they were known at the moment of the event — never later. If an account was closed for fraud next week, the “account status” feature must still read *active* for today's training row. Getting this wrong is the most common source of models that are too good to be true.",
      "title": "Point-in-time correctness"
+    },
+    {
+     "type": "timeline",
+     "title": "How a leaked feature sneaks in",
+     "caption": "The training row for the 10 March transaction must use the status known on 10 March — active. Reading today's table gives closed, a fact that only exists because of the outcome the model is meant to predict.",
+     "items": [
+      {
+       "when": "1 Mar",
+       "label": "Account opened",
+       "text": "status = active"
+      },
+      {
+       "when": "10 Mar",
+       "label": "Transaction scored",
+       "text": "the label event; correct as-of value is active"
+      },
+      {
+       "when": "17 Mar",
+       "label": "Fraud confirmed",
+       "text": "account closed; status = closed"
+      },
+      {
+       "when": "Today",
+       "label": "Training set built",
+       "text": "a naive join reads closed — the future leaks into the past"
+      }
+     ]
     },
     {
      "type": "flow",
@@ -2230,6 +3014,16 @@ TRACK.modules.push({
       "Training, validation and test sets are versioned and reproducible.",
       "Personal data is minimised and protected before use.",
       "Lineage links data, features and models."
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Features often matter more than the algorithm, but the hard part is computing them **identically** for training and serving.",
+      "A feature store pairs an offline store (history, point-in-time joins) with an online store (latest values in milliseconds) behind one definition.",
+      "**Point-in-time correctness** prevents leakage; models that look too good offline usually leaked the future.",
+      "Version data, code, features, labels, evaluation sets, models and prompts, and keep **lineage** linking them."
      ]
     },
     {
@@ -2404,6 +3198,116 @@ TRACK.modules.push({
      "title": "PII detection and handling pipeline"
     },
     {
+     "type": "topology",
+     "title": "Privacy zones in an AI data platform",
+     "caption": "Raw personal data and the token keys stay in a small, audited zone; only minimised, pseudonymised and redacted data flows on to analytics, training and vendors. Re-identification, when legitimately needed, happens inside the restricted zone.",
+     "nodes": [
+      {
+       "id": "src",
+       "kind": "server",
+       "label": "Source systems",
+       "sub": "records, notes, chats",
+       "x": 0,
+       "y": 3
+      },
+      {
+       "id": "raw",
+       "kind": "storage",
+       "label": "Raw zone",
+       "sub": "restricted, audited",
+       "x": 2,
+       "y": 3
+      },
+      {
+       "id": "pii",
+       "kind": "process",
+       "label": "PII treatment",
+       "sub": "detect, redact, tokenise",
+       "x": 4,
+       "y": 3
+      },
+      {
+       "id": "vault",
+       "kind": "vault",
+       "label": "Token vault",
+       "sub": "keys held separately",
+       "x": 3,
+       "y": 5
+      },
+      {
+       "id": "ana",
+       "kind": "storage",
+       "label": "Analytics zone",
+       "sub": "pseudonymised",
+       "x": 6,
+       "y": 1
+      },
+      {
+       "id": "tr",
+       "kind": "storage",
+       "label": "Training data",
+       "sub": "minimised",
+       "x": 6,
+       "y": 3
+      },
+      {
+       "id": "ven",
+       "kind": "team",
+       "label": "Label vendor",
+       "sub": "redacted extract only",
+       "x": 6,
+       "y": 5
+      }
+     ],
+     "links": [
+      {
+       "a": "src",
+       "b": "raw"
+      },
+      {
+       "a": "raw",
+       "b": "pii"
+      },
+      {
+       "a": "pii",
+       "b": "vault",
+       "label": "tokens",
+       "style": "dashed"
+      },
+      {
+       "a": "pii",
+       "b": "ana"
+      },
+      {
+       "a": "pii",
+       "b": "tr"
+      },
+      {
+       "a": "pii",
+       "b": "ven",
+       "label": "contract"
+      }
+     ],
+     "zones": [
+      {
+       "label": "Restricted zone",
+       "x": 2,
+       "y": 3,
+       "w": 3,
+       "h": 3,
+       "tone": "warn"
+      },
+      {
+       "label": "Broad use",
+       "x": 6,
+       "y": 1,
+       "w": 1,
+       "h": 5,
+       "tone": "good"
+      }
+     ]
+    },
+    {
      "type": "callout",
      "kind": "warning",
      "text": "Hashing a phone number with a plain hash function is **not** anonymisation. Bangladeshi mobile numbers follow a known format, so an attacker can hash every possible number and look up the result in minutes. Use keyed hashing or tokenisation with the secret held separately — and still treat the result as personal data.",
@@ -2429,6 +3333,34 @@ TRACK.modules.push({
       }
      ],
      "title": "Privacy formulas at concept level"
+    },
+    {
+     "type": "chart",
+     "kind": "bar",
+     "title": "Privacy budget versus noise",
+     "caption": "Laplace noise scale for releasing a count (sensitivity 1), computed as b = 1 ÷ ε. Halving ε doubles the noise, which hurts small groups first.",
+     "labels": [
+      "ε = 0.1",
+      "ε = 0.25",
+      "ε = 0.5",
+      "ε = 1",
+      "ε = 2",
+      "ε = 4"
+     ],
+     "series": [
+      {
+       "name": "Noise scale b",
+       "values": [
+        10,
+        4,
+        2,
+        1,
+        0.5,
+        0.25
+       ]
+      }
+     ],
+     "yLabel": "Noise scale"
     },
     {
      "type": "callout",
@@ -2510,6 +3442,17 @@ TRACK.modules.push({
      "kind": "pro",
      "text": "Remember that the **model itself** can leak data: models can memorise rare strings, and attacks can sometimes infer whether a record was in the training set. Minimise personal data in training sets and fine-tuning data, and treat model artefacts trained on personal data as sensitive. Module 8 goes deeper.",
      "title": "Models are data too"
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Know what you hold: direct identifiers, quasi-identifiers, sensitive attributes and PII hidden in free text and media.",
+      "Pseudonymised data is still personal data; true anonymisation is hard with rich data, and plain hashes of phone numbers are reversible.",
+      "Apply treatment early, at ingestion, so raw PII never reaches broad analytics, training or vendors.",
+      "Differential privacy turns privacy into a budget: smaller ε means stronger protection and more noise.",
+      "Synthetic data helps testing and augmentation but must not replace real data for final evaluation — and models themselves can leak."
+     ]
     },
     {
      "type": "quiz",
@@ -2684,6 +3627,12 @@ TRACK.modules.push({
        "Lossy — lower recall unless results are re-ranked with full vectors"
       ],
       [
+       "Scalar or binary quantisation",
+       "Store each dimension as an 8-bit integer or a single bit",
+       "4× (int8) to 32× (binary) memory savings and fast distance maths",
+       "Some recall loss; rescore the top candidates with full-precision vectors"
+      ],
+      [
        "Disk-based graph indexes",
        "Keep most of the graph on SSD",
        "Billion-scale at lower RAM cost",
@@ -2745,9 +3694,41 @@ TRACK.modules.push({
        "name": "Quantised memory",
        "expr": "bytes ≈ number of vectors × code size in bytes",
        "meaning": "With 64-byte PQ codes, 10 million vectors need about 0.64 GB plus centroids and overhead."
+      },
+      {
+       "name": "Shorter embeddings",
+       "expr": "bytes scale linearly with dimensions",
+       "meaning": "Some embedding models are trained so their vectors can be truncated (for example 1,024 → 256 dimensions) with modest quality loss — test it on your own retrieval set before relying on it."
       }
      ],
      "title": "Sizing a vector index"
+    },
+    {
+     "type": "chart",
+     "kind": "bar",
+     "title": "Memory for 10 million 768-dimension vectors",
+     "caption": "Computed raw storage before index overhead: float32 needs about 30.7 GB, while binary codes or 64-byte PQ codes fit in under 1 GB. The compressed options trade some recall, so plan a rescoring step.",
+     "labels": [
+      "float32",
+      "float16",
+      "int8",
+      "binary",
+      "PQ 64 B"
+     ],
+     "series": [
+      {
+       "name": "Memory",
+       "values": [
+        30.72,
+        15.36,
+        7.68,
+        0.96,
+        0.64
+       ]
+      }
+     ],
+     "unit": " GB",
+     "yLabel": "Raw vector memory"
     },
     {
      "type": "scenario",
@@ -2847,6 +3828,17 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Embeddings place similar meanings close together; embed queries and documents with the **same model and version**.",
+      "Use the similarity metric the model was trained for; after unit normalisation cosine, dot product and Euclidean rank alike.",
+      "ANN indexes (HNSW, IVF, PQ, quantisation) trade a little recall for speed and memory — measure recall@k with real filters.",
+      "Size memory as vectors × dimensions × bytes; quantisation and shorter embeddings cut it sharply, with a rescoring step.",
+      "Changing the embedding model is a migration: re-embed everything and run old and new indexes side by side."
+     ]
+    },
+    {
      "type": "quiz",
      "items": [
       {
@@ -2940,34 +3932,36 @@ TRACK.modules.push({
      "text": "A model is not a one-off deliverable; it is a living component that degrades as the world changes. The **ML lifecycle** describes how models are framed, built, shipped and kept healthy. Architects design for the whole loop — including the parts that happen after launch."
     },
     {
-     "type": "flow",
+     "type": "cycle",
+     "title": "The ML lifecycle",
+     "center": "Living model",
+     "caption": "It is a loop, not a line: monitoring and feedback send you back to data, and every pass through the loop needs the evaluation set you built the first time. Plan staff and budget for steps 4–6, not only step 3.",
      "items": [
       {
        "label": "Frame",
-       "text": "Decision, task, metrics, baseline (Module 1)"
+       "text": "Decision, task, metrics and baseline (Module 1)."
       },
       {
        "label": "Data",
-       "text": "Collect, label, validate, engineer features (Module 2)"
+       "text": "Collect, label, validate and engineer features (Module 2)."
       },
       {
        "label": "Develop",
-       "text": "Choose model family, train, tune hyperparameters"
+       "text": "Choose a model family, train and tune."
       },
       {
        "label": "Evaluate",
-       "text": "Offline metrics, slices, error analysis"
+       "text": "Offline metrics, slices and error analysis."
       },
       {
        "label": "Deploy",
-       "text": "Package, serve, shadow and canary releases"
+       "text": "Package and serve; shadow and canary releases."
       },
       {
        "label": "Monitor and learn",
-       "text": "Drift, feedback, retraining — back to Data"
+       "text": "Drift, feedback and retraining — back to Data."
       }
-     ],
-     "title": "The ML lifecycle"
+     ]
     },
     {
      "type": "callout",
@@ -3092,6 +4086,43 @@ TRACK.modules.push({
      "title": "Task-to-model cheat sheet"
     },
     {
+     "type": "matrix",
+     "title": "Picking a starting point",
+     "caption": "Two questions narrow the choice quickly: how structured is the input, and how many trustworthy labels exist? Treat the quadrant as the first candidate to beat, then let the evaluation set decide.",
+     "x": "Input: tabular → unstructured",
+     "y": "Labelled examples available",
+     "quadrants": [
+      {
+       "title": "Gradient-boosted trees",
+       "items": [
+        "Churn, credit, fraud scores",
+        "Fast, cheap, explainable"
+       ]
+      },
+      {
+       "title": "Fine-tune a pretrained model",
+       "items": [
+        "Images, audio, text classes",
+        "Small encoders for volume"
+       ]
+      },
+      {
+       "title": "Rules and anomaly detection",
+       "items": [
+        "Few or no labels",
+        "Collect outcomes first"
+       ]
+      },
+      {
+       "title": "Foundation model + prompt",
+       "items": [
+        "Few labels, messy text",
+        "Add retrieval for facts"
+       ]
+      }
+     ]
+    },
+    {
      "type": "callout",
      "kind": "pro",
      "text": "Always build the **dumbest reasonable baseline** first — a rule, a logistic regression, a prompt to an off-the-shelf model. It exposes data problems early, sets the bar for fancy models and occasionally turns out to be good enough to ship.",
@@ -3129,9 +4160,20 @@ TRACK.modules.push({
       "Recommendation and ad systems that learn from user responses, often with bandit algorithms.",
       "Robotics, logistics and resource control where actions shape future states.",
       "Preference tuning of language models, where human or AI judgements act as rewards.",
+      "**Reasoning models:** reinforcement learning on tasks with checkable answers (maths, code, unit tests) rewards correct final results, which teaches models to work through problems step by step.",
       "It needs a clear reward, safe exploration and a lot of interaction — reward mis-specification leads to gaming."
      ],
      "title": "Reinforcement learning in practice"
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "A model is a living component: plan for the whole lifecycle, especially evaluation, deployment and monitoring.",
+      "Choose the paradigm by the signal you have — labels (supervised), none (unsupervised), the data itself (self-supervised) or rewards (RL).",
+      "Classical ML still wins on tabular data; foundation models win on messy language and multimodal tasks with few labels.",
+      "Always build the simplest reasonable **baseline** first — it sets the bar and exposes data problems."
+     ]
     },
     {
      "type": "quiz",
@@ -3320,6 +4362,35 @@ TRACK.modules.push({
      "title": "Attention in one line"
     },
     {
+     "type": "chart",
+     "kind": "line",
+     "title": "Standard attention cost grows with the square of context",
+     "caption": "Computed relative cost of standard attention, with a 4,000-token prompt as 1. Each doubling of context multiplies attention work by four — one reason long prompts are slower and dearer even before per-token pricing.",
+     "labels": [
+      "4K",
+      "8K",
+      "16K",
+      "32K",
+      "64K",
+      "128K"
+     ],
+     "series": [
+      {
+       "name": "Relative attention cost",
+       "values": [
+        1,
+        4,
+        16,
+        64,
+        256,
+        1024
+       ]
+      }
+     ],
+     "unit": "×",
+     "yLabel": "Relative cost by context length"
+    },
+    {
      "type": "callout",
      "kind": "example",
      "text": "In “The boat drifted toward the bank because the river was flooding”, attention lets *bank* draw on *river* and *flooding*, so its representation leans toward a riverbank rather than a financial institution. The same word gets a different vector in a different sentence — that is what makes these representations contextual.",
@@ -3359,11 +4430,64 @@ TRACK.modules.push({
      "title": "Three Transformer shapes"
     },
     {
+     "type": "tree",
+     "title": "The neural-network family tree",
+     "caption": "Most modern language models sit on the decoder-only branch, increasingly as mixture-of-experts. Encoder-only models remain the cheap workhorses for classification and embeddings.",
+     "root": {
+      "label": "Neural networks",
+      "children": [
+       {
+        "label": "MLP",
+        "text": "fixed-size vectors"
+       },
+       {
+        "label": "CNN",
+        "text": "images, spatial data"
+       },
+       {
+        "label": "RNN / LSTM",
+        "text": "sequences, step by step"
+       },
+       {
+        "label": "Transformer",
+        "text": "self-attention",
+        "children": [
+         {
+          "label": "Encoder-only",
+          "text": "classify, embed"
+         },
+         {
+          "label": "Encoder–decoder",
+          "text": "translate, transcribe"
+         },
+         {
+          "label": "Decoder-only",
+          "text": "chat, code, reasoning",
+          "children": [
+           {
+            "label": "Dense"
+           },
+           {
+            "label": "Mixture-of-experts"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "label": "State-space / hybrid",
+        "text": "long sequences, lower cost"
+       }
+      ]
+     }
+    },
+    {
      "type": "keypoints",
      "items": [
       "**Mixture-of-experts:** only a subset of the network's parameters is active for each token, increasing capacity without a proportional rise in compute per token.",
       "**Efficient attention:** variants and kernels that reduce memory and speed up long contexts.",
       "**Hybrid and state-space designs:** alternatives that process long sequences with lower cost than full attention.",
+      "**Reasoning models:** trained to generate a long chain of intermediate reasoning before the final answer — markedly better on multi-step problems, at the price of more output tokens, higher latency and higher cost per request (test-time compute).",
       "**Multimodal encoders:** images, audio and video converted into token-like inputs for the same backbone.",
       "As an architect, track these for their **effect on cost, latency and context length**, not for the maths."
      ],
@@ -3393,6 +4517,17 @@ TRACK.modules.push({
        "feedback": "Possible but needlessly complex; generation adds latency and failure modes for a pure classification task.",
        "best": false
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "A network learns by forward pass, loss, backpropagation and small weight updates, repeated over many batches.",
+      "Transformers dominate because they train in parallel, capture long-range context through attention and scale smoothly.",
+      "Standard attention cost grows with the **square** of context length — long prompts cost more and run slower.",
+      "Pick the Transformer shape by job: encoder-only to classify and embed, encoder–decoder to transform, decoder-only to generate.",
+      "Track new designs (mixture-of-experts, reasoning models, state-space hybrids) for their effect on cost, latency and context, not the maths."
      ]
     },
     {
@@ -3524,6 +4659,13 @@ TRACK.modules.push({
        "Tone, helpfulness, refusal behaviour"
       ],
       [
+       "Reinforcement fine-tuning",
+       "Behaviour, rewarded by an automatic grader",
+       "Tasks with checkable answers plus a grader",
+       "Moderate to high; grader quality is critical",
+       "Multi-step reasoning, code, structured decisions"
+      ],
+      [
        "Distillation",
        "Train a small student from a large teacher",
        "Teacher outputs on many inputs",
@@ -3554,6 +4696,29 @@ TRACK.modules.push({
       }
      ],
      "title": "Adaptation arithmetic"
+    },
+    {
+     "type": "chart",
+     "kind": "bar",
+     "title": "Weight memory for a 32-billion-parameter model",
+     "caption": "Computed as parameters × bytes per parameter: about 64 GB at 16-bit, 32 GB at 8-bit and 16 GB at 4-bit. The KV cache and activations come on top, and lower precision must be checked on your own evaluation set.",
+     "labels": [
+      "16-bit",
+      "8-bit",
+      "4-bit"
+     ],
+     "series": [
+      {
+       "name": "Weights",
+       "values": [
+        64,
+        32,
+        16
+       ]
+      }
+     ],
+     "unit": " GB",
+     "yLabel": "Weight memory"
     },
     {
      "type": "compare",
@@ -3594,6 +4759,56 @@ TRACK.modules.push({
      "kind": "warning",
      "text": "Fine-tuning is a poor way to teach a model **facts that change** — prices, policies, stock levels. It is expensive to refresh and the model may still blend old and new. Fine-tune for **behaviour, format and domain language**; supply changing facts through retrieval or tools at run time.",
      "title": "Do not fine-tune for knowledge"
+    },
+    {
+     "type": "tree",
+     "title": "Which adaptation closes which gap?",
+     "caption": "Diagnose the gap on your evaluation set first, then reach for the lightest fix on that branch. Fine-tuning appears only where the problem is behaviour, never for facts that change.",
+     "root": {
+      "label": "Gap on the evaluation set",
+      "children": [
+       {
+        "label": "Missing or changing facts",
+        "children": [
+         {
+          "label": "Retrieval or tools"
+         }
+        ]
+       },
+       {
+        "label": "Wrong format or jargon",
+        "children": [
+         {
+          "label": "Better prompt and schema",
+          "children": [
+           {
+            "label": "LoRA fine-tune"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "label": "Wrong tone or refusals",
+        "children": [
+         {
+          "label": "Preference tuning"
+         }
+        ]
+       },
+       {
+        "label": "Too slow or costly",
+        "children": [
+         {
+          "label": "Smaller model or routing"
+         },
+         {
+          "label": "Distil or quantise"
+         }
+        ]
+       }
+      ]
+     }
     },
     {
      "type": "steps",
@@ -3675,6 +4890,16 @@ TRACK.modules.push({
        "feedback": "Aggressive quantization damages quality and does nothing to close the accuracy gap.",
        "best": false
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Start from a foundation model and choose the **lightest adaptation** that clears the quality bar: prompt, retrieve, then fine-tune.",
+      "LoRA trains well under 1% of the parameters and adapters can be swapped per task; quantisation and distillation cut serving cost.",
+      "Fine-tune for behaviour, format and domain language — supply changing facts through retrieval or tools.",
+      "Pick the smallest model that clears the bar with margin at target volume, and re-run the comparison as new models appear."
      ]
     },
     {
@@ -3894,7 +5119,7 @@ TRACK.modules.push({
      "items": [
       "**Ranking:** precision@k, recall@k, NDCG (rewards putting the best items at the top) and MRR (position of the first relevant item).",
       "**Generation:** task success, factual correctness, groundedness in sources, format compliance and human preference.",
-      "**LLM-as-judge:** a model grades outputs against a rubric — scalable, but calibrate it against human judgements and watch for bias toward longer answers.",
+      "**LLM-as-judge:** a model grades outputs against a rubric — scalable, but calibrate it against human judgements and watch for known biases: favouring longer answers, the first option shown, and outputs written in its own style.",
       "Module 5 covers retrieval metrics and Module 7 covers evaluation pipelines in production."
      ],
      "title": "Beyond classification and regression (preview)"
@@ -3904,6 +5129,55 @@ TRACK.modules.push({
      "kind": "pro",
      "text": "The threshold is a **business decision**, not a modelling default. Set it from the cost of each error type, or from operational capacity — for example the number of cases investigators can review per day — and revisit it when costs or capacity change.",
      "title": "0.5 is not a law"
+    },
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "Moving the threshold trades precision for recall",
+     "caption": "Illustrative fraud model: raising the threshold flags fewer cases, so precision rises and recall falls. The right operating point comes from error costs or review capacity, not from 0.5.",
+     "labels": [
+      "0.1",
+      "0.2",
+      "0.3",
+      "0.4",
+      "0.5",
+      "0.6",
+      "0.7",
+      "0.8",
+      "0.9"
+     ],
+     "series": [
+      {
+       "name": "Precision",
+       "values": [
+        18,
+        29,
+        38,
+        46,
+        53,
+        60,
+        67,
+        74,
+        82
+       ]
+      },
+      {
+       "name": "Recall",
+       "values": [
+        96,
+        92,
+        88,
+        84,
+        80,
+        72,
+        61,
+        47,
+        28
+       ]
+      }
+     ],
+     "unit": "%",
+     "yLabel": "Score by decision threshold"
     },
     {
      "type": "case",
@@ -3941,6 +5215,17 @@ TRACK.modules.push({
        "feedback": "AUC compares models but does not decide how many patients to flag; an operating point is still needed.",
        "best": false
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Every classification metric starts from the confusion matrix; choose the one that matches the decision.",
+      "With rare positives, accuracy rewards doing nothing — report precision, recall, F1 or PR-AUC with the class balance.",
+      "Set the threshold from **error costs or review capacity**; precision@k fits teams that can review only k cases.",
+      "Use MAE, RMSE or WAPE for regression; avoid MAPE when actuals can be zero.",
+      "LLM-as-judge scales evaluation but must be calibrated against humans and checked for length and position bias."
      ]
     },
     {
@@ -4060,6 +5345,57 @@ TRACK.modules.push({
       }
      ],
      "title": "Bias, variance and the sweet spot"
+    },
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "The overfitting signature",
+     "caption": "Illustrative learning curves: training loss keeps falling while validation loss turns upward after about epoch 6. Early stopping keeps the model from the point where the gap starts to grow.",
+     "labels": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10"
+     ],
+     "series": [
+      {
+       "name": "Training loss",
+       "values": [
+        0.92,
+        0.7,
+        0.56,
+        0.46,
+        0.39,
+        0.33,
+        0.28,
+        0.24,
+        0.2,
+        0.17
+       ]
+      },
+      {
+       "name": "Validation loss",
+       "values": [
+        0.95,
+        0.76,
+        0.64,
+        0.57,
+        0.53,
+        0.52,
+        0.53,
+        0.56,
+        0.6,
+        0.65
+       ]
+      }
+     ],
+     "yLabel": "Loss by epoch"
     },
     {
      "type": "keypoints",
@@ -4217,6 +5553,30 @@ TRACK.modules.push({
      "title": "How big must an A/B test be?"
     },
     {
+     "type": "chart",
+     "kind": "bar",
+     "title": "Small effects need big samples",
+     "caption": "Users needed per arm from the rule of thumb for a 5% base rate, computed for four minimum detectable lifts. Halving the lift you want to detect quadruples the sample.",
+     "labels": [
+      "0.25 pt",
+      "0.5 pt",
+      "1 pt",
+      "2 pt"
+     ],
+     "series": [
+      {
+       "name": "Users per arm",
+       "values": [
+        121600,
+        30400,
+        7600,
+        1900
+       ]
+      }
+     ],
+     "yLabel": "Users per arm by detectable lift"
+    },
+    {
      "type": "template",
      "title": "Model Evaluation Plan",
      "purpose": "Agree, before training starts, how the model will be judged offline and online and what result triggers each decision.",
@@ -4346,6 +5706,17 @@ TRACK.modules.push({
        "term": "Cross-validation",
        "def": "Rotating training and validation across k folds to estimate performance more reliably."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "A large gap between training and validation performance means overfitting; more and better data is usually the strongest cure.",
+      "Split honestly: by time for temporal data, by entity for repeated customers or patients, and keep the test set untouched.",
+      "If a result looks too good, assume **leakage** until proven otherwise.",
+      "Offline evaluation earns the right to test; only online evidence (shadow, canary, A/B) proves value.",
+      "Size A/B tests before you start — small effects need very large samples."
      ]
     },
     {
@@ -4558,6 +5929,35 @@ TRACK.modules.push({
      "title": "Bigger is not automatically better"
     },
     {
+     "type": "chart",
+     "kind": "line",
+     "title": "Lost in the middle",
+     "caption": "Illustrative shape seen in long-context tests: answers are most accurate when the key passage sits near the start or end of a long prompt and dip when it is buried in the middle. Measure your own model, and put the most relevant context where it is used best.",
+     "labels": [
+      "Start",
+      "20%",
+      "40%",
+      "60%",
+      "80%",
+      "End"
+     ],
+     "series": [
+      {
+       "name": "Answer accuracy",
+       "values": [
+        88,
+        79,
+        71,
+        70,
+        77,
+        90
+       ]
+      }
+     ],
+     "unit": "%",
+     "yLabel": "Accuracy by position of the key passage"
+    },
+    {
      "type": "table",
      "head": [
       "Parameter",
@@ -4622,6 +6022,7 @@ TRACK.modules.push({
         "Generated sequentially, one at a time",
         "Dominate total response time",
         "Usually priced several times higher per token",
+        "Reasoning models add internal reasoning tokens, usually billed as output — cap them with an effort or budget setting",
         "Controlled with max tokens and concise instructions"
        ]
       }
@@ -4652,6 +6053,17 @@ TRACK.modules.push({
        "feedback": "Adds cost and can propagate earlier mistakes; it does not enforce a format.",
        "best": false
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Tokens decide what fits, what it costs and how long it takes — count them with the target model's tokenizer on real traffic.",
+      "Non-Latin scripts and romanised text often need more tokens per word; budget per language.",
+      "Every component competes for the context window; reserve output space first and send the most relevant context, not all of it.",
+      "Output tokens (including reasoning tokens) are generated one by one and usually cost more — always cap them.",
+      "Use low temperature and structured outputs for extraction; test properties, not exact strings."
      ]
     },
     {
@@ -4933,6 +6345,56 @@ TRACK.modules.push({
      "title": "Prompt engineering workflow"
     },
     {
+     "type": "sequence",
+     "title": "Releasing a prompt like code",
+     "caption": "No prompt change reaches customers without passing the evaluation set in CI and a gradual rollout. The registry keeps every version, so rollback is a configuration change, not an emergency edit.",
+     "actors": [
+      "Developer",
+      "Prompt registry",
+      "CI evaluation",
+      "Production"
+     ],
+     "steps": [
+      {
+       "from": 0,
+       "to": 1,
+       "label": "Commit v1.5 with updated spec"
+      },
+      {
+       "from": 1,
+       "to": 2,
+       "label": "Trigger evaluation run"
+      },
+      {
+       "from": 2,
+       "to": 2,
+       "label": "Score 400 cases against pass bar"
+      },
+      {
+       "from": 2,
+       "to": 0,
+       "label": "Pass: intent F1 0.92, no PIN asks",
+       "reply": true
+      },
+      {
+       "from": 0,
+       "to": 3,
+       "label": "Release behind flag to 10%"
+      },
+      {
+       "from": 3,
+       "to": 0,
+       "label": "Live quality and cost by version",
+       "reply": true
+      },
+      {
+       "from": 0,
+       "to": 1,
+       "label": "Promote v1.5 or roll back to v1.4"
+      }
+     ]
+    },
+    {
      "type": "scenario",
      "situation": "Prompts for a banking assistant are scattered as string literals across six services. Last week a developer “fixed a typo” in one prompt and intent accuracy quietly dropped for Banglish messages. Nobody noticed for days.",
      "options": [
@@ -4963,6 +6425,17 @@ TRACK.modules.push({
      "kind": "pro",
      "text": "Order prompts with **stable content first** — system rules, tool definitions, examples — and variable content last — retrieved text and the user's message. It makes prompts easier to read and lets prompt caching reuse the shared prefix (Lesson 4).",
      "title": "Stable first, variable last"
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Treat prompts as **code**: versioned, specified, reviewed, tested in CI and released gradually.",
+      "Respect the instruction hierarchy — system, developer, user — and treat retrieved content and tool results as data, never instructions.",
+      "Use schema-constrained outputs where code consumes the answer; a valid shape can still be wrong, so validate meaning in code.",
+      "Use reasoning (prompted or built-in) only where evaluation shows it pays for its tokens and latency.",
+      "Put stable content first and variable content last for readability and prefix caching."
+     ]
     },
     {
      "type": "quiz",
@@ -5042,34 +6515,66 @@ TRACK.modules.push({
      "text": "**Tool calling** (also called function calling) lets a model ask your application to do something — look up a balance, search a catalogue, create a ticket. The model only proposes a call as structured data; **your code decides whether and how to execute it**. This one pattern turns a text generator into a component that can work with live systems."
     },
     {
-     "type": "flow",
-     "items": [
-      {
-       "label": "Request",
-       "text": "App sends prompt plus tool definitions (name, description, JSON Schema for arguments)"
-      },
-      {
-       "label": "Propose",
-       "text": "Model returns a tool call with arguments — or a direct answer"
-      },
-      {
-       "label": "Validate",
-       "text": "App checks arguments, user permissions and policy"
-      },
-      {
-       "label": "Execute",
-       "text": "App calls the real API or database"
-      },
-      {
-       "label": "Return",
-       "text": "Result goes back to the model as a tool message"
-      },
-      {
-       "label": "Respond",
-       "text": "Model writes the final answer or proposes another call"
-      }
+     "type": "sequence",
+     "title": "The tool-calling loop",
+     "caption": "The model only proposes the call (step 3); the application validates it and executes it with the customer's own permissions (steps 4–5). The loop repeats if the model asks for another tool, so cap the number of iterations.",
+     "actors": [
+      "Customer",
+      "Application",
+      "Model",
+      "Order API"
      ],
-     "title": "The tool-calling loop"
+     "steps": [
+      {
+       "from": 0,
+       "to": 1,
+       "label": "Where is my order 4471?"
+      },
+      {
+       "from": 1,
+       "to": 2,
+       "label": "Prompt + tool definitions"
+      },
+      {
+       "from": 2,
+       "to": 1,
+       "label": "Tool call: get_order(id=4471)",
+       "reply": true
+      },
+      {
+       "from": 1,
+       "to": 1,
+       "label": "Validate args, authorise as user"
+      },
+      {
+       "from": 1,
+       "to": 3,
+       "label": "GET order 4471 (user's token)"
+      },
+      {
+       "from": 3,
+       "to": 1,
+       "label": "Status: out for delivery",
+       "reply": true
+      },
+      {
+       "from": 1,
+       "to": 2,
+       "label": "Tool result message"
+      },
+      {
+       "from": 2,
+       "to": 1,
+       "label": "Final answer text",
+       "reply": true
+      },
+      {
+       "from": 1,
+       "to": 0,
+       "label": "Streamed answer",
+       "reply": true
+      }
+     ]
     },
     {
      "type": "callout",
@@ -5086,7 +6591,8 @@ TRACK.modules.push({
       "Compact, relevant results — do not return 5,000-row tables to the model.",
       "Helpful error messages the model can act on (“date must be in the future”).",
       "Separate read tools from write tools, and gate the writes.",
-      "Load only the tools relevant to the current task; every definition costs tokens."
+      "Load only the tools relevant to the current task; every definition costs tokens.",
+      "Expose shared tools through a standard tool-connection interface so several assistants can reuse them with the same controls (Module 6)."
      ],
      "title": "Designing good tools"
     },
@@ -5266,6 +6772,16 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Tool calling lets a model **propose** actions; your code validates, authorises with the user's permissions and executes them.",
+      "Design few, distinct, typed tools with compact results; separate reads from writes and gate the writes.",
+      "Stream user-facing text for perceived speed, but never act on a tool call or object until it is complete and validated.",
+      "Manage conversation state deliberately: recent turns verbatim, older turns summarised, critical facts in structured slots."
+     ]
+    },
+    {
      "type": "quiz",
      "items": [
       {
@@ -5413,6 +6929,126 @@ TRACK.modules.push({
      "title": "Routing patterns"
     },
     {
+     "type": "text",
+     "text": "In production these patterns usually live in one place: an **AI gateway** that every application calls instead of calling model providers directly. It authenticates callers, enforces quotas and budgets per team, routes and falls back between models, serves cached responses and records tokens, cost and latency for every call — so policy changes once, centrally."
+    },
+    {
+     "type": "topology",
+     "title": "An AI gateway in front of every model",
+     "caption": "Applications never hold provider keys or pick providers themselves; the gateway does routing, fallback, caching and quotas, and emits one consistent cost and trace record per call.",
+     "nodes": [
+      {
+       "id": "pa",
+       "kind": "cloud",
+       "label": "Provider A",
+       "sub": "frontier tier",
+       "x": 0,
+       "y": 1
+      },
+      {
+       "id": "pb",
+       "kind": "cloud",
+       "label": "Provider B",
+       "sub": "fallback",
+       "x": 2,
+       "y": 1
+      },
+      {
+       "id": "slm",
+       "kind": "model",
+       "label": "Small model",
+       "sub": "self-hosted tier",
+       "x": 4,
+       "y": 1
+      },
+      {
+       "id": "cache",
+       "kind": "db",
+       "label": "Response cache",
+       "sub": "exact + semantic",
+       "x": 0,
+       "y": 3.5
+      },
+      {
+       "id": "gw",
+       "kind": "gateway",
+       "label": "AI gateway",
+       "sub": "auth, quotas, routing",
+       "x": 2,
+       "y": 3.5
+      },
+      {
+       "id": "obs",
+       "kind": "monitor",
+       "label": "Cost and traces",
+       "sub": "per team, per model",
+       "x": 4,
+       "y": 3.5
+      },
+      {
+       "id": "app1",
+       "kind": "server",
+       "label": "Support app",
+       "sub": "interactive",
+       "x": 1,
+       "y": 6
+      },
+      {
+       "id": "app2",
+       "kind": "process",
+       "label": "Back-office jobs",
+       "sub": "batch",
+       "x": 3,
+       "y": 6
+      }
+     ],
+     "links": [
+      {
+       "a": "app1",
+       "b": "gw"
+      },
+      {
+       "a": "app2",
+       "b": "gw"
+      },
+      {
+       "a": "gw",
+       "b": "cache",
+       "label": "lookup",
+       "style": "dashed"
+      },
+      {
+       "a": "gw",
+       "b": "pa"
+      },
+      {
+       "a": "gw",
+       "b": "pb",
+       "label": "fallback"
+      },
+      {
+       "a": "gw",
+       "b": "slm"
+      },
+      {
+       "a": "gw",
+       "b": "obs",
+       "label": "records",
+       "style": "dashed"
+      }
+     ],
+     "zones": [
+      {
+       "label": "Model tiers",
+       "x": 0,
+       "y": 1,
+       "w": 5,
+       "h": 1,
+       "tone": "neutral"
+      }
+     ]
+    },
+    {
      "type": "flow",
      "items": [
       {
@@ -5474,6 +7110,45 @@ TRACK.modules.push({
      "kind": "example",
      "text": "A request uses 2,000 input and 400 output tokens. With illustrative prices of 1.00 per million input tokens and 4.00 per million output tokens: 2,000 × 1 ÷ 1M + 400 × 4 ÷ 1M = 0.0020 + 0.0016 = **0.0036 per request**. At 1.5 million requests a month: **5,400**.\nWith a cascade where a small model costs 0.0004 per request and 20% escalate: 0.0004 + 0.2 × 0.0036 = 0.00112 per request → **1,680 per month**, a 69% saving if quality holds.\nLatency: TTFT 0.6 s + 400 tokens ÷ 50 tokens/s = **8.6 s** — which is why streaming and shorter answers matter.",
      "title": "Worked token math (prices are illustrative)"
+    },
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "When does a cascade pay off?",
+     "caption": "Computed from the worked example: small model 0.40 and large model 3.60 per 1,000 requests. The cascade wins until roughly 89% of requests escalate — but only if the checks that trigger escalation are reliable.",
+     "labels": [
+      "0%",
+      "20%",
+      "40%",
+      "60%",
+      "80%",
+      "100%"
+     ],
+     "series": [
+      {
+       "name": "Cascade",
+       "values": [
+        0.4,
+        1.12,
+        1.84,
+        2.56,
+        3.28,
+        4.0
+       ]
+      },
+      {
+       "name": "Large model only",
+       "values": [
+        3.6,
+        3.6,
+        3.6,
+        3.6,
+        3.6,
+        3.6
+       ]
+      }
+     ],
+     "yLabel": "Cost per 1,000 requests by escalation rate"
     },
     {
      "type": "template",
@@ -5583,6 +7258,17 @@ TRACK.modules.push({
        "feedback": "Discounts help at the margin but leave the structural waste in place.",
        "best": false
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Production traffic is repetitive and uneven: **caching** exploits repetition, **routing** exploits unevenness.",
+      "Prefix caching needs stable content first; semantic caches need strict thresholds, scoping and measured hit precision.",
+      "A cascade pays off only while escalation stays low and the checks that trigger it are reliable.",
+      "Put routing, fallback, caching, quotas and cost records in one **AI gateway** rather than in every app.",
+      "Do the token math — cost per request, cached input, escalation, TTFT plus decode time — before launch, then compare with reality."
      ]
     },
     {
@@ -5708,6 +7394,56 @@ TRACK.modules.push({
       ]
      ],
      "title": "Multimodal inputs"
+    },
+    {
+     "type": "sequence",
+     "title": "A voice turn, streamed end to end",
+     "caption": "Latency hides in the hand-offs, so each stage streams: speech synthesis starts on the first sentence while the rest is still being generated. A low-confidence transcript should trigger a clarifying question, not a guess.",
+     "actors": [
+      "Caller",
+      "Speech-to-text",
+      "Assistant",
+      "Text-to-speech"
+     ],
+     "steps": [
+      {
+       "from": 0,
+       "to": 1,
+       "label": "Speech in Bangla (audio stream)"
+      },
+      {
+       "from": 1,
+       "to": 2,
+       "label": "Final transcript + confidence"
+      },
+      {
+       "from": 2,
+       "to": 2,
+       "label": "Guards, state, model call"
+      },
+      {
+       "from": 2,
+       "to": 3,
+       "label": "First sentence of the answer"
+      },
+      {
+       "from": 3,
+       "to": 0,
+       "label": "Audio starts playing",
+       "reply": true
+      },
+      {
+       "from": 2,
+       "to": 3,
+       "label": "Remaining sentences"
+      },
+      {
+       "from": 3,
+       "to": 0,
+       "label": "Audio continues",
+       "reply": true
+      }
+     ]
     },
     {
      "type": "callout",
@@ -5855,6 +7591,133 @@ TRACK.modules.push({
      "text": "Follow one message through the design. A customer writes in Banglish on a messaging app; the **experience API** authenticates them and opens a session. **Orchestration** loads conversation state and the versioned prompt, runs input guards and lets the router pick a model tier. The model may call tools — order lookup, ticket creation — which orchestration executes with the customer's permissions. The answer streams back through **output guards**; traces, token counts and outcomes flow to **operations** for evaluation and cost tracking. Every arrow is a place to measure latency, cost and quality."
     },
     {
+     "type": "topology",
+     "title": "The reference assistant, one message deep",
+     "caption": "Trace the walk-through above on this map: the channel and experience API handle identity and sessions, orchestration owns state, prompts, tools and guards, and only the gateway talks to models. Operations sees every hop.",
+     "nodes": [
+      {
+       "id": "mt",
+       "kind": "model",
+       "label": "Model tiers",
+       "sub": "small / mid / large",
+       "x": 4,
+       "y": 0
+      },
+      {
+       "id": "gw",
+       "kind": "gateway",
+       "label": "Model gateway",
+       "sub": "routing, caching",
+       "x": 4,
+       "y": 2
+      },
+      {
+       "id": "crm",
+       "kind": "server",
+       "label": "CRM / tickets",
+       "sub": "enterprise system",
+       "x": 6,
+       "y": 2
+      },
+      {
+       "id": "api",
+       "kind": "api",
+       "label": "Experience API",
+       "sub": "auth, sessions, stream",
+       "x": 2,
+       "y": 4
+      },
+      {
+       "id": "orch",
+       "kind": "process",
+       "label": "Orchestration",
+       "sub": "state, prompts, guards",
+       "x": 4,
+       "y": 4
+      },
+      {
+       "id": "bill",
+       "kind": "api",
+       "label": "Billing API",
+       "sub": "packs, balances",
+       "x": 6,
+       "y": 5
+      },
+      {
+       "id": "ch",
+       "kind": "phone",
+       "label": "Messaging app",
+       "sub": "channel adapter",
+       "x": 0,
+       "y": 4
+      },
+      {
+       "id": "cust",
+       "kind": "user",
+       "label": "Customer",
+       "sub": "writes in Banglish",
+       "x": 0,
+       "y": 6
+      },
+      {
+       "id": "ops",
+       "kind": "monitor",
+       "label": "Ops and audit",
+       "sub": "traces, evals, cost",
+       "x": 3,
+       "y": 6
+      }
+     ],
+     "links": [
+      {
+       "a": "cust",
+       "b": "ch"
+      },
+      {
+       "a": "ch",
+       "b": "api"
+      },
+      {
+       "a": "api",
+       "b": "orch"
+      },
+      {
+       "a": "orch",
+       "b": "gw"
+      },
+      {
+       "a": "gw",
+       "b": "mt"
+      },
+      {
+       "a": "orch",
+       "b": "crm",
+       "label": "tool call"
+      },
+      {
+       "a": "orch",
+       "b": "bill",
+       "label": "tool call"
+      },
+      {
+       "a": "orch",
+       "b": "ops",
+       "label": "traces",
+       "style": "dashed"
+      }
+     ],
+     "zones": [
+      {
+       "label": "Assistant platform",
+       "x": 2,
+       "y": 2,
+       "w": 3,
+       "h": 3,
+       "tone": "accent"
+      }
+     ]
+    },
+    {
      "type": "case",
      "title": "A Bangla customer-support assistant for a mobile operator",
      "context": "A Bangladeshi mobile operator with tens of millions of subscribers receives a large volume of chat and voice contacts: recharge failures, data-pack questions, balance checks, SIM replacement and complaints. Customers write in Bangla script, romanised Bangla and English, often mixed in one message, and many prefer voice. Leadership wants an AI assistant to resolve a large share of chat contacts without lowering satisfaction. Constraints: customer data must stay in-country under company policy, contact volume spikes around Eid and major promotions, and the budget per resolved contact is fixed.",
@@ -5971,6 +7834,17 @@ TRACK.modules.push({
        "term": "Output guard",
        "def": "A check applied to model output — schema, rules, grounding, safety — before it is used or shown."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Pre-process media before it reaches an expensive model: resize, crop, redact and reject unreadable inputs early.",
+      "Stream every stage of a voice pipeline and evaluate speech recognition on real accents and code-switching first.",
+      "Guard every output with schema, business-rule, reference, grounding, safety and PII checks; bound retries and define fallbacks.",
+      "Enforce high-impact rules **in code at the point of action**, never only in the prompt.",
+      "The reference assistant separates channels, experience API, orchestration, gateway, enterprise systems and operations."
      ]
     },
     {

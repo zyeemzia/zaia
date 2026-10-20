@@ -182,6 +182,152 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "topology",
+     "title": "The two-path RAG platform",
+     "caption": "The offline path keeps the indexes fresh; the online path answers within a latency budget. They meet only at the indexes, which is why each path gets its own service level, scaling and monitoring.",
+     "nodes": [
+      {
+       "id": "src",
+       "kind": "storage",
+       "label": "Sources",
+       "sub": "wikis, docs, tickets",
+       "x": 0,
+       "y": 1
+      },
+      {
+       "id": "ing",
+       "kind": "process",
+       "label": "Ingestion",
+       "sub": "parse, chunk, embed",
+       "x": 2,
+       "y": 1
+      },
+      {
+       "id": "idx",
+       "kind": "db",
+       "label": "Indexes",
+       "sub": "vector + keyword + ACLs",
+       "x": 4,
+       "y": 1
+      },
+      {
+       "id": "ret",
+       "kind": "process",
+       "label": "Retriever",
+       "sub": "hybrid, filtered",
+       "x": 4,
+       "y": 3
+      },
+      {
+       "id": "rr",
+       "kind": "model",
+       "label": "Reranker",
+       "sub": "cross-encoder",
+       "x": 6,
+       "y": 3
+      },
+      {
+       "id": "orch",
+       "kind": "process",
+       "label": "Orchestrator",
+       "sub": "rewrite, assemble, guard",
+       "x": 2,
+       "y": 4
+      },
+      {
+       "id": "gw",
+       "kind": "gateway",
+       "label": "Model gateway",
+       "sub": "routing, logging",
+       "x": 4,
+       "y": 5
+      },
+      {
+       "id": "llm",
+       "kind": "model",
+       "label": "LLM",
+       "sub": "grounded answer",
+       "x": 6,
+       "y": 5
+      },
+      {
+       "id": "app",
+       "kind": "server",
+       "label": "Chat app",
+       "sub": "citations panel",
+       "x": 0,
+       "y": 4
+      },
+      {
+       "id": "u",
+       "kind": "user",
+       "label": "Employee",
+       "sub": "signed in",
+       "x": 0,
+       "y": 6
+      }
+     ],
+     "links": [
+      {
+       "a": "src",
+       "b": "ing",
+       "label": "sync"
+      },
+      {
+       "a": "ing",
+       "b": "idx",
+       "label": "upsert"
+      },
+      {
+       "a": "u",
+       "b": "app"
+      },
+      {
+       "a": "app",
+       "b": "orch"
+      },
+      {
+       "a": "orch",
+       "b": "ret"
+      },
+      {
+       "a": "ret",
+       "b": "idx",
+       "label": "query"
+      },
+      {
+       "a": "ret",
+       "b": "rr"
+      },
+      {
+       "a": "orch",
+       "b": "gw"
+      },
+      {
+       "a": "gw",
+       "b": "llm"
+      }
+     ],
+     "zones": [
+      {
+       "label": "Offline path · freshness target",
+       "x": 0,
+       "y": 1,
+       "w": 5,
+       "h": 1,
+       "tone": "neutral"
+      },
+      {
+       "label": "Online path · latency target",
+       "x": 2,
+       "y": 3,
+       "w": 5,
+       "h": 3,
+       "tone": "accent"
+      }
+     ]
+    },
+    {
      "type": "callout",
      "kind": "insight",
      "text": "The ingestion path is a data pipeline with a **freshness** target (how quickly a changed document becomes answerable). The query path is an online service with a **latency** target. Design, scale and monitor them separately. In practice most answer-quality problems are born offline, in parsing and chunking, and only show up online.",
@@ -242,6 +388,44 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "matrix",
+     "title": "Where the knowledge should live",
+     "caption": "Corpus size and volatility decide between retrieval and long context. Fine-tuning is not on this map: it addresses behaviour and style, and combines with either option.",
+     "x": "How often the knowledge changes",
+     "y": "Corpus size",
+     "quadrants": [
+      {
+       "title": "RAG",
+       "items": [
+        "Large, fairly stable corpus",
+        "Index once, update in batches"
+       ]
+      },
+      {
+       "title": "RAG with incremental sync",
+       "items": [
+        "Large and changing",
+        "Change detection and deletes",
+        "Freshness target per source"
+       ]
+      },
+      {
+       "title": "Long context",
+       "items": [
+        "Small, stable documents",
+        "Prefix caching keeps it cheap"
+       ]
+      },
+      {
+       "title": "Long context or light RAG",
+       "items": [
+        "Small but changing",
+        "Reload the current version per call"
+       ]
+      }
+     ]
+    },
+    {
      "type": "callout",
      "kind": "pro",
      "text": "Many mature systems use retrieval for **what** the model should know, light fine-tuning for **how** it should respond (format, tone, domain phrasing), and long context for whole-document tasks such as reviewing one contract end to end. Treat the three as complementary tools, not rival religions.",
@@ -259,7 +443,7 @@ TRACK.modules.push({
       {
        "label": "R2",
        "title": "Scope",
-       "text": "If the whole corpus fits comfortably in the context window with headroom, long context may be simpler. If not, retrieve."
+       "text": "If the whole corpus fits comfortably in the context window with headroom, long context may be simpler. Windows of hundreds of thousands of tokens are now common, but cost per call and weaker use of mid-context material still favour retrieval for large or growing corpora."
       },
       {
        "label": "R3",
@@ -327,6 +511,16 @@ TRACK.modules.push({
        "term": "Grounding",
        "def": "Constraining a model's output to supplied evidence so every substantive claim can be traced to a source."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "RAG retrieves evidence at question time so answers rest on your own, current, permission-filtered knowledge — with citations.",
+      "Run two pipelines with two service levels: ingestion for **freshness**, query for **latency**.",
+      "Use retrieval for what the model should know, fine-tuning for how it should respond, and long context for whole-document tasks.",
+      "RAG reduces hallucination but does not abolish it — measure it (Lesson 5)."
      ]
     },
     {
@@ -503,6 +697,32 @@ TRACK.modules.push({
      "kind": "insight",
      "text": "Small chunks give sharp embeddings and precise citations but may lose the context that makes them meaningful. Large chunks carry context but dilute the embedding and spend more tokens. A few hundred tokens with modest overlap is a reasonable **starting point**; your own golden set decides the final value.",
      "title": "Chunk size is a trade-off you measure, not a constant you copy"
+    },
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "Chunk size is an experiment, not a constant",
+     "caption": "Illustrative results from one golden set: recall rises as tiny chunks gain context, then falls as large chunks dilute their embeddings. Your corpus will peak somewhere else — log each run in the experiment template.",
+     "labels": [
+      "128",
+      "256",
+      "512",
+      "1,024",
+      "2,048"
+     ],
+     "series": [
+      {
+       "name": "Recall@5",
+       "values": [
+        0.71,
+        0.84,
+        0.82,
+        0.74,
+        0.62
+       ]
+      }
+     ],
+     "yLabel": "Recall@5 by chunk size (tokens)"
     },
     {
      "type": "compare",
@@ -719,6 +939,17 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Retrieval can only return what ingestion produced — parsing and chunking decide most RAG quality.",
+      "Keep tables, lists and exceptions intact with layout-aware chunking; use parent–child retrieval for precision plus context.",
+      "Attach metadata (source, version, section path, dates, ACL groups, language) — it powers citations, filters and permissions.",
+      "Pin and store the embedding model version; changing it means a full re-embed and a side-by-side cutover.",
+      "Treat deletes and permission revocations as features with a freshness target."
+     ]
+    },
+    {
      "type": "quiz",
      "items": [
       {
@@ -879,6 +1110,62 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "sequence",
+     "title": "One hybrid retrieval request",
+     "caption": "Both retrievers run in parallel with the same permission filter; fusion uses ranks, so no score calibration is needed. Only the short fused list reaches the expensive cross-encoder.",
+     "actors": [
+      "Orchestrator",
+      "Keyword index",
+      "Vector index",
+      "Reranker"
+     ],
+     "steps": [
+      {
+       "from": 0,
+       "to": 0,
+       "label": "Rewrite to standalone query + filters"
+      },
+      {
+       "from": 0,
+       "to": 1,
+       "label": "BM25 top 100 (ACL filter)"
+      },
+      {
+       "from": 0,
+       "to": 2,
+       "label": "ANN top 100 (ACL filter)"
+      },
+      {
+       "from": 1,
+       "to": 0,
+       "label": "Ranked list A",
+       "reply": true
+      },
+      {
+       "from": 2,
+       "to": 0,
+       "label": "Ranked list B",
+       "reply": true
+      },
+      {
+       "from": 0,
+       "to": 0,
+       "label": "RRF fuse, drop near-duplicates"
+      },
+      {
+       "from": 0,
+       "to": 3,
+       "label": "Score 60 query–passage pairs"
+      },
+      {
+       "from": 3,
+       "to": 0,
+       "label": "Top 6 passages",
+       "reply": true
+      }
+     ]
+    },
+    {
      "type": "compare",
      "title": "Bi-encoder vs cross-encoder",
      "columns": [
@@ -1018,6 +1305,30 @@ TRACK.modules.push({
      "title": "Earn every layer of complexity"
     },
     {
+     "type": "chart",
+     "kind": "bar",
+     "title": "What each layer typically buys",
+     "caption": "Illustrative recall@5 on one enterprise golden set. Hybrid search fixes exact-term misses, and reranking lifts the right passage into the few that reach the model; measure the gain on your own data before adding each layer.",
+     "labels": [
+      "Keyword only",
+      "Vector only",
+      "Hybrid (RRF)",
+      "Hybrid + rerank"
+     ],
+     "series": [
+      {
+       "name": "Recall@5",
+       "values": [
+        0.58,
+        0.66,
+        0.74,
+        0.86
+       ]
+      }
+     ],
+     "yLabel": "Recall@5"
+    },
+    {
      "type": "scenario",
      "title": "Error codes nobody can find",
      "situation": "A software company's support assistant uses vector search only. Customers paste error codes such as `E-4012`, and the assistant returns generic troubleshooting articles instead of the one page that documents that code.",
@@ -1059,6 +1370,16 @@ TRACK.modules.push({
        "term": "Cross-encoder reranker",
        "def": "A model that scores a query and a candidate passage together to reorder a short candidate list with high precision."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Run retrieval as a cascade: cheap, generous candidate generation for recall, then an expensive reranker for precision.",
+      "Hybrid search (BM25 + vectors) catches both exact identifiers and paraphrases; RRF fuses ranks without score calibration.",
+      "If the right passage is not in the candidates, no reranker can rescue it — check recall at candidate depth first.",
+      "Add query rewriting, decomposition or graph techniques only when evaluation shows the failures they fix."
      ]
     },
     {
@@ -1281,6 +1602,69 @@ TRACK.modules.push({
      "title": "Never let the model enforce access"
     },
     {
+     "type": "sequence",
+     "title": "A permission-aware RAG request",
+     "caption": "Identity comes from the session and entitlements from a policy service — never from the prompt. The model receives only authorised passages, and the orchestrator verifies citations and logs what was shown to whom.",
+     "actors": [
+      "Employee",
+      "Orchestrator",
+      "Policy service",
+      "Retrieval",
+      "Model"
+     ],
+     "steps": [
+      {
+       "from": 0,
+       "to": 1,
+       "label": "Question + session token"
+      },
+      {
+       "from": 1,
+       "to": 2,
+       "label": "Resolve entitlements"
+      },
+      {
+       "from": 2,
+       "to": 1,
+       "label": "Groups: staff, region-de",
+       "reply": true
+      },
+      {
+       "from": 1,
+       "to": 3,
+       "label": "Hybrid query + mandatory ACL filter"
+      },
+      {
+       "from": 3,
+       "to": 1,
+       "label": "Authorised passages only",
+       "reply": true
+      },
+      {
+       "from": 1,
+       "to": 4,
+       "label": "Grounded prompt with source IDs"
+      },
+      {
+       "from": 4,
+       "to": 1,
+       "label": "Answer + cited IDs",
+       "reply": true
+      },
+      {
+       "from": 1,
+       "to": 1,
+       "label": "Verify citations, write audit log"
+      },
+      {
+       "from": 1,
+       "to": 0,
+       "label": "Answer with citation links",
+       "reply": true
+      }
+     ]
+    },
+    {
      "type": "table",
      "title": "Retrieval-specific risks and mitigations",
      "head": [
@@ -1319,6 +1703,103 @@ TRACK.modules.push({
        "Customer A's assistant retrieves customer B's documents",
        "Per-tenant namespaces or a mandatory server-side tenant filter, covered by tests"
       ]
+     ]
+    },
+    {
+     "type": "topology",
+     "title": "The pilot architecture as found",
+     "caption": "The audience filter lived only in the web front end, so the public API route reached the shared index unfiltered, and the shared cache could replay staff answers to citizens. Use it to work through the case questions below.",
+     "nodes": [
+      {
+       "id": "idx",
+       "kind": "db",
+       "label": "Shared index",
+       "sub": "public + internal pages",
+       "x": 2,
+       "y": 0
+      },
+      {
+       "id": "svc",
+       "kind": "server",
+       "label": "Assistant service",
+       "sub": "retrieval + generation",
+       "x": 2,
+       "y": 2
+      },
+      {
+       "id": "cache",
+       "kind": "db",
+       "label": "Response cache",
+       "sub": "not scoped by audience",
+       "x": 4.5,
+       "y": 2
+      },
+      {
+       "id": "web",
+       "kind": "server",
+       "label": "Web front end",
+       "sub": "applies internal filter",
+       "x": 0,
+       "y": 4
+      },
+      {
+       "id": "api",
+       "kind": "api",
+       "label": "Public API route",
+       "sub": "no filter",
+       "x": 2,
+       "y": 4
+      },
+      {
+       "id": "cit",
+       "kind": "user",
+       "label": "Citizen",
+       "sub": "public pilot",
+       "x": 1,
+       "y": 6
+      },
+      {
+       "id": "staff",
+       "kind": "user",
+       "label": "Caseworker",
+       "sub": "staff portal",
+       "x": 4,
+       "y": 6
+      }
+     ],
+     "links": [
+      {
+       "a": "cit",
+       "b": "web"
+      },
+      {
+       "a": "cit",
+       "b": "api",
+       "style": "attack"
+      },
+      {
+       "a": "web",
+       "b": "svc"
+      },
+      {
+       "a": "api",
+       "b": "svc",
+       "label": "unfiltered",
+       "style": "attack"
+      },
+      {
+       "a": "staff",
+       "b": "svc"
+      },
+      {
+       "a": "svc",
+       "b": "idx"
+      },
+      {
+       "a": "svc",
+       "b": "cache",
+       "label": "shared"
+      }
      ]
     },
     {
@@ -1386,6 +1867,17 @@ TRACK.modules.push({
        "term": "Abstention",
        "def": "A designed behaviour in which the system states that its sources do not answer the question instead of guessing."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Grounding is an architecture contract: labelled sources, a cite-or-abstain rule, structured citations and code that checks every cited ID.",
+      "Climb the citation ladder to claim-level, verified citations where answers carry real risk.",
+      "Access control belongs in the **retrieval service**, using identity from the authenticated session — never in prompts or front ends.",
+      "Pre-filter as the primary control, post-check as a second line, and scope caches by tenant and permission.",
+      "Treat retrieved text as data: indirect prompt injection and content poisoning arrive through the index."
      ]
     },
     {
@@ -1601,6 +2093,38 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "cycle",
+     "title": "The RAG improvement loop",
+     "center": "Golden set",
+     "caption": "Every production failure you fix becomes a new golden-set item, so the same bug cannot quietly return. Change one stage per turn of the loop so you know what moved the metric.",
+     "items": [
+      {
+       "label": "Harvest failures",
+       "text": "Complaints, low ratings, abstention spikes, audits."
+      },
+      {
+       "label": "Label evidence",
+       "text": "Expected passages, key facts and a reference answer."
+      },
+      {
+       "label": "Measure per stage",
+       "text": "Recall@k, precision, faithfulness, relevance."
+      },
+      {
+       "label": "Locate the stage",
+       "text": "Ingestion, retrieval, ranking, generation or citation."
+      },
+      {
+       "label": "Fix one thing",
+       "text": "Chunking, hybrid search, reranker, prompt or model."
+      },
+      {
+       "label": "Gate and release",
+       "text": "Golden set in CI, then a staged rollout and monitoring."
+      }
+     ]
+    },
+    {
      "type": "callout",
      "kind": "warning",
      "text": "Scoring faithfulness or relevance with an LLM-as-judge scales well, but judges have biases — towards longer answers, towards the first option shown, towards text that resembles their own style. Calibrate the judge against human labels on a sample, track agreement, and pin the judge's version (Module 7 goes deeper).",
@@ -1739,6 +2263,17 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "“The bot is wrong” is not a diagnosis — evaluate each stage as well as the end-to-end answer.",
+      "Track the quality quadrant: context precision, context recall, faithfulness and answer relevance.",
+      "Build the golden set from real questions, include the hard cases, version it and add every fixed failure.",
+      "LLM judges scale evaluation but must be calibrated against humans and pinned to a version.",
+      "In production, watch freshness lag, zero-result and abstention rates, sampled faithfulness and cost per answered question."
+     ]
+    },
+    {
      "type": "quiz",
      "items": [
       {
@@ -1838,32 +2373,34 @@ TRACK.modules.push({
      "title": "Agent"
     },
     {
-     "type": "flow",
+     "type": "cycle",
      "title": "The agent loop",
+     "center": "Goal + budget",
+     "caption": "The model chooses the next step on every turn of the loop; the controller, not the model, enforces budgets and stop conditions at step 6. Every turn costs tokens, time and risk.",
      "items": [
       {
-       "label": "Goal and context",
-       "text": "task, constraints, state"
+       "label": "Read context",
+       "text": "Goal, constraints, task state and memory."
       },
       {
        "label": "Plan",
-       "text": "choose the next step"
+       "text": "Choose the next step."
       },
       {
        "label": "Act",
-       "text": "call a tool or respond"
+       "text": "Call a tool or respond."
       },
       {
        "label": "Observe",
-       "text": "results, errors, new facts"
+       "text": "Results, errors and new facts."
       },
       {
        "label": "Update state",
-       "text": "progress, memory, plan"
+       "text": "Progress, plan and memory."
       },
       {
        "label": "Stop or continue",
-       "text": "done, budget hit or escalate"
+       "text": "Done and verified, budget hit, or escalate."
       }
      ]
     },
@@ -1968,6 +2505,45 @@ TRACK.modules.push({
      "kind": "insight",
      "text": "Each step up the spectrum buys flexibility and costs predictability, latency, money and attack surface. Workflows are easier to test, audit and price. Agents earn their place when the path genuinely cannot be known in advance.",
      "title": "Use the least autonomy that works"
+    },
+    {
+     "type": "matrix",
+     "title": "How much autonomy, and how much oversight?",
+     "caption": "Path variability earns autonomy; the impact of a wrong action decides the oversight around it. A high-impact task with a variable path still gets an agent — but every consequential action passes a human or policy gate.",
+     "x": "How much the path varies",
+     "y": "Impact of a wrong action",
+     "quadrants": [
+      {
+       "title": "Workflow + approval gates",
+       "items": [
+        "Fixed steps, costly errors",
+        "Code checks between steps",
+        "Human approves R3–R4"
+       ]
+      },
+      {
+       "title": "Bounded agent, human in loop",
+       "items": [
+        "Open path, costly errors",
+        "Read tools free, writes gated",
+        "Tight budgets"
+       ]
+      },
+      {
+       "title": "Simple workflow or one call",
+       "items": [
+        "Fixed steps, cheap errors",
+        "Cheapest to run and test"
+       ]
+      },
+      {
+       "title": "Bounded agent, human on loop",
+       "items": [
+        "Open path, cheap errors",
+        "Monitor, sample, stop control"
+       ]
+      }
+     ]
     },
     {
      "type": "compare",
@@ -2087,6 +2663,16 @@ TRACK.modules.push({
        "term": "Autonomy spectrum",
        "def": "The range from fixed, code-driven workflows to long-running autonomous agents, used to choose the least autonomy that solves a problem."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "An agent lets model output steer control flow — which tool, in what order and when to stop — inside designer-set boundaries.",
+      "Use the **least autonomy that works**: each step up the spectrum costs predictability, money and attack surface.",
+      "Agents earn their place when the path is open-ended **and** outcomes can be verified and actions recovered or gated.",
+      "Every loop needs stop conditions enforced in code: verified goal, step, token, time and spend limits, repetition detection and escalation."
      ]
     },
     {
@@ -2367,6 +2953,123 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "topology",
+     "title": "Orchestrator–workers for a research briefing",
+     "caption": "The lead agent splits the question at run time and gives each worker its own context, tools and budget; workers return typed findings with sources, not transcripts. A separate checker verifies citations before the briefing reaches the analyst.",
+     "nodes": [
+      {
+       "id": "web",
+       "kind": "internet",
+       "label": "Web search",
+       "sub": "public sources",
+       "x": 1,
+       "y": 0
+      },
+      {
+       "id": "rep",
+       "kind": "db",
+       "label": "Report index",
+       "sub": "internal reports",
+       "x": 3,
+       "y": 0
+      },
+      {
+       "id": "mkt",
+       "kind": "api",
+       "label": "Market data API",
+       "sub": "read-only",
+       "x": 5,
+       "y": 0
+      },
+      {
+       "id": "w1",
+       "kind": "process",
+       "label": "Worker 1",
+       "sub": "web research",
+       "x": 1,
+       "y": 2
+      },
+      {
+       "id": "w2",
+       "kind": "process",
+       "label": "Worker 2",
+       "sub": "internal reports",
+       "x": 3,
+       "y": 2
+      },
+      {
+       "id": "w3",
+       "kind": "process",
+       "label": "Worker 3",
+       "sub": "pricing data",
+       "x": 5,
+       "y": 2
+      },
+      {
+       "id": "lead",
+       "kind": "model",
+       "label": "Lead agent",
+       "sub": "plans, budgets, synthesises",
+       "x": 3,
+       "y": 4
+      },
+      {
+       "id": "chk",
+       "kind": "shield",
+       "label": "Citation checker",
+       "sub": "verifies each source",
+       "x": 5.5,
+       "y": 4.5
+      },
+      {
+       "id": "u",
+       "kind": "user",
+       "label": "Strategy analyst",
+       "sub": "accepts 5-minute wait",
+       "x": 3,
+       "y": 6
+      }
+     ],
+     "links": [
+      {
+       "a": "u",
+       "b": "lead"
+      },
+      {
+       "a": "lead",
+       "b": "w1",
+       "label": "subtask"
+      },
+      {
+       "a": "lead",
+       "b": "w2"
+      },
+      {
+       "a": "lead",
+       "b": "w3",
+       "label": "subtask"
+      },
+      {
+       "a": "w1",
+       "b": "web"
+      },
+      {
+       "a": "w2",
+       "b": "rep"
+      },
+      {
+       "a": "w3",
+       "b": "mkt"
+      },
+      {
+       "a": "lead",
+       "b": "chk",
+       "label": "draft",
+       "style": "dashed"
+      }
+     ]
+    },
+    {
      "type": "scenario",
      "title": "Research synthesis",
      "situation": "A strategy team wants a tool that answers broad questions such as 'How are mid-size European grocers using dynamic pricing?' It should consult 10–20 sources across the web and internal reports and return a cited briefing. Users accept up to five minutes of waiting.",
@@ -2420,6 +3123,16 @@ TRACK.modules.push({
        "term": "Routing",
        "def": "Classifying an input and directing it to a specialised prompt, model or flow."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Most value comes from five composable patterns: chaining, routing, parallelisation, orchestrator–workers and evaluator–optimiser.",
+      "Put deterministic **code gates** between model steps so errors stop before they cascade.",
+      "Choose multi-agent designs only for genuinely parallel work, isolated contexts or different permissions — they multiply cost and failure paths.",
+      "Design handoffs as typed contracts: one goal per agent, artefacts not transcripts, provenance and a budget per role."
      ]
     },
     {
@@ -2601,50 +3314,133 @@ TRACK.modules.push({
     },
     {
      "type": "text",
-     "text": "**Open tool-integration protocols.** Connecting every tool to every agent framework creates an N × M tangle of adapters. Open protocols such as the **Model Context Protocol** define a standard way for an AI application (the host, through a client) to discover and call **tools**, read **resources** and use **prompt templates** exposed by servers. A system of record wrapped once as a protocol server can then be used by many agents and applications, and agents can be moved between frameworks without rewriting integrations."
+     "text": "**Open tool-integration protocols.** Connecting every tool to every agent framework creates an N × M tangle of adapters. Open protocols such as the **Model Context Protocol** define a standard way for an AI application (the host, through a client) to discover and call **tools**, read **resources** and use **prompt templates** exposed by servers. A system of record wrapped once as a protocol server can then be used by many agents and applications, and agents can be moved between frameworks without rewriting integrations. Remote servers should authenticate callers with standard delegated authorisation (OAuth-style scoped tokens) rather than shared keys. A younger family of open **agent-to-agent** protocols lets agents built on different platforms discover each other's capabilities and delegate tasks; treat these specifications as evolving and check their current versions before committing."
     },
     {
-     "type": "layers",
+     "type": "topology",
      "title": "Tool integration through an open protocol",
-     "items": [
+     "caption": "The host application holds the agent loop, the policy engine and the user's identity; each protocol server wraps one system of record once and is reused by every agent. Only allow-listed, version-pinned servers are connected, each with narrowly scoped credentials.",
+     "nodes": [
       {
-       "label": "AI application (host)",
-       "parts": [
-        "Agent loop",
-        "Policy and approval engine",
-        "User session and identity"
-       ]
+       "id": "idp",
+       "kind": "idp",
+       "label": "Identity provider",
+       "sub": "user tokens and scopes",
+       "x": 1,
+       "y": 1
       },
       {
-       "label": "Protocol clients",
-       "parts": [
-        "Discover tools and resources",
-        "Invoke tools",
-        "Pass user context"
-       ]
+       "id": "host",
+       "kind": "server",
+       "label": "AI application",
+       "sub": "host: agent loop, policy",
+       "x": 1,
+       "y": 3
       },
       {
-       "label": "Transport",
-       "parts": [
-        "Local process for desktop tools",
-        "Remote over HTTP with authentication"
-       ]
+       "id": "u",
+       "kind": "user",
+       "label": "Employee",
+       "sub": "signed in",
+       "x": 1,
+       "y": 5
       },
       {
-       "label": "Protocol servers",
-       "parts": [
-        "Tools",
-        "Resources",
-        "Prompt templates"
-       ]
+       "id": "s1",
+       "kind": "api",
+       "label": "CRM server",
+       "sub": "remote, tools + resources",
+       "x": 3.5,
+       "y": 1
       },
       {
-       "label": "Systems of record",
-       "parts": [
-        "Business APIs",
-        "Databases",
-        "File stores"
-       ]
+       "id": "s2",
+       "kind": "api",
+       "label": "Files server",
+       "sub": "local process",
+       "x": 3.5,
+       "y": 3
+      },
+      {
+       "id": "s3",
+       "kind": "api",
+       "label": "Ticketing server",
+       "sub": "third party, pinned",
+       "x": 3.5,
+       "y": 5
+      },
+      {
+       "id": "crm",
+       "kind": "db",
+       "label": "CRM",
+       "sub": "system of record",
+       "x": 6,
+       "y": 1
+      },
+      {
+       "id": "fs",
+       "kind": "storage",
+       "label": "File store",
+       "sub": "team documents",
+       "x": 6,
+       "y": 3
+      },
+      {
+       "id": "tk",
+       "kind": "cloud",
+       "label": "Ticketing SaaS",
+       "sub": "external service",
+       "x": 6,
+       "y": 5
+      }
+     ],
+     "links": [
+      {
+       "a": "u",
+       "b": "host"
+      },
+      {
+       "a": "host",
+       "b": "idp",
+       "label": "delegated auth",
+       "style": "dashed"
+      },
+      {
+       "a": "host",
+       "b": "s1",
+       "label": "HTTP + token"
+      },
+      {
+       "a": "host",
+       "b": "s2",
+       "label": "local"
+      },
+      {
+       "a": "host",
+       "b": "s3",
+       "label": "HTTP + token"
+      },
+      {
+       "a": "s1",
+       "b": "crm"
+      },
+      {
+       "a": "s2",
+       "b": "fs"
+      },
+      {
+       "a": "s3",
+       "b": "tk"
+      }
+     ],
+     "zones": [
+      {
+       "label": "Allow-listed servers",
+       "x": 3.5,
+       "y": 1,
+       "w": 1,
+       "h": 5,
+       "tone": "accent"
       }
      ]
     },
@@ -2764,6 +3560,16 @@ TRACK.modules.push({
        "term": "Episodic memory",
        "def": "An agent's store of past interactions and their outcomes, retrieved to inform future behaviour."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "A tool's name, description and schema are effectively a prompt — design one clear purpose, constrained parameters, actionable errors and concise results.",
+      "Prefer task-level tools that enforce business rules in code; classify every tool by side effect and back it with least-privilege credentials.",
+      "Open tool-integration protocols wrap each system once for many agents — but treat every server as **supply chain**: allow-list, pin, review and scope.",
+      "Memory is a product: decide what is written, summarised and forgotten, validate writes, scope per user and support deletion."
      ]
     },
     {
@@ -2910,32 +3716,53 @@ TRACK.modules.push({
      ]
     },
     {
-     "type": "flow",
-     "title": "Approval gate design",
-     "items": [
+     "type": "sequence",
+     "title": "An approval gate for a consequential action",
+     "caption": "The agent only proposes; the policy engine decides whether a person must look, and the approver sees the diff and the reason it was flagged. Execution carries an idempotency key, and every decision lands in the audit trail.",
+     "actors": [
+      "Agent",
+      "Policy engine",
+      "Approver",
+      "Payments API"
+     ],
+     "steps": [
       {
-       "label": "Propose",
-       "text": "agent emits a structured action"
+       "from": 0,
+       "to": 1,
+       "label": "Propose: refund 350 on order 1182"
       },
       {
-       "label": "Check policy",
-       "text": "rules engine evaluates risk"
+       "from": 1,
+       "to": 1,
+       "label": "Rule: refunds above 200 need approval"
       },
       {
-       "label": "Route",
-       "text": "above threshold → approver with context and diff"
+       "from": 1,
+       "to": 2,
+       "label": "Request with diff and reason"
       },
       {
-       "label": "Decide",
-       "text": "approve, edit or reject"
+       "from": 2,
+       "to": 1,
+       "label": "Approved, edited to 300",
+       "reply": true
       },
       {
-       "label": "Execute",
-       "text": "with idempotency key"
+       "from": 1,
+       "to": 3,
+       "label": "Refund 300 (idempotency key)"
       },
       {
-       "label": "Record",
-       "text": "decision, approver and outcome"
+       "from": 3,
+       "to": 1,
+       "label": "Refund ID 88121",
+       "reply": true
+      },
+      {
+       "from": 1,
+       "to": 0,
+       "label": "Result + audit record",
+       "reply": true
       }
      ]
     },
@@ -2987,6 +3814,110 @@ TRACK.modules.push({
         "Their own authorisation still applies",
         "Audit logs"
        ]
+      }
+     ]
+    },
+    {
+     "type": "topology",
+     "title": "Bounding the blast radius",
+     "caption": "Agent-run code lives in an isolated runtime with no default network: every outbound call passes an egress allow-list, credentials come per task from a broker, and consequential actions route through policy and approvals. Even a manipulated agent can only reach what this map allows.",
+     "nodes": [
+      {
+       "id": "ag",
+       "kind": "container",
+       "label": "Agent runtime",
+       "sub": "micro-VM, ephemeral",
+       "x": 1,
+       "y": 3
+      },
+      {
+       "id": "vault",
+       "kind": "vault",
+       "label": "Secrets broker",
+       "sub": "short-lived scoped tokens",
+       "x": 1,
+       "y": 5.5
+      },
+      {
+       "id": "px",
+       "kind": "firewall",
+       "label": "Egress proxy",
+       "sub": "allow-list only",
+       "x": 3,
+       "y": 3
+      },
+      {
+       "id": "pol",
+       "kind": "shield",
+       "label": "Policy gate",
+       "sub": "approvals for R3–R4",
+       "x": 3,
+       "y": 5.5
+      },
+      {
+       "id": "a1",
+       "kind": "api",
+       "label": "Runbook API",
+       "sub": "restart, clear, rotate",
+       "x": 5.5,
+       "y": 2
+      },
+      {
+       "id": "a2",
+       "kind": "api",
+       "label": "Ticketing API",
+       "sub": "create, update",
+       "x": 5.5,
+       "y": 4
+      },
+      {
+       "id": "net",
+       "kind": "internet",
+       "label": "Other hosts",
+       "sub": "denied by default",
+       "x": 5.5,
+       "y": 0.5
+      }
+     ],
+     "links": [
+      {
+       "a": "ag",
+       "b": "px"
+      },
+      {
+       "a": "px",
+       "b": "a1"
+      },
+      {
+       "a": "px",
+       "b": "a2"
+      },
+      {
+       "a": "px",
+       "b": "net",
+       "label": "blocked",
+       "style": "dashed"
+      },
+      {
+       "a": "ag",
+       "b": "vault",
+       "label": "token",
+       "style": "dashed"
+      },
+      {
+       "a": "ag",
+       "b": "pol",
+       "label": "R3–R4"
+      }
+     ],
+     "zones": [
+      {
+       "label": "Sandbox",
+       "x": 1,
+       "y": 3,
+       "w": 1,
+       "h": 1,
+       "tone": "warn"
       }
      ]
     },
@@ -3130,6 +4061,16 @@ TRACK.modules.push({
        "term": "Sandbox",
        "def": "An isolated execution environment with restricted network, file system and resources, used to contain what agent-run code can affect."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Autonomy is granted: classify every action by impact and reversibility (R0–R4) and match the control to the class.",
+      "Choose the oversight mode per class — in the loop, on the loop or out of the loop — and design gates that resist approval fatigue.",
+      "Bound the worst case with agent identity, on-behalf-of delegation, short-lived scoped tokens, sandboxes, egress allow-lists, budgets and a kill switch.",
+      "The model is not a security boundary: assume manipulation and let permissions, not judgement, limit the damage."
      ]
     },
     {
@@ -3303,6 +4244,67 @@ TRACK.modules.push({
      "title": "Design for undo"
     },
     {
+     "type": "sequence",
+     "title": "A saga unwinds a failed booking",
+     "caption": "Each completed step has a defined compensating action, run in reverse order when a later step fails. Idempotency keys make both the original calls and the compensations safe to retry.",
+     "actors": [
+      "Controller",
+      "Carrier API",
+      "Payments API",
+      "Customs API"
+     ],
+     "steps": [
+      {
+       "from": 0,
+       "to": 1,
+       "label": "Book shipment (key K1)"
+      },
+      {
+       "from": 1,
+       "to": 0,
+       "label": "Booking B-55 confirmed",
+       "reply": true
+      },
+      {
+       "from": 0,
+       "to": 2,
+       "label": "Charge deposit (key K2)"
+      },
+      {
+       "from": 2,
+       "to": 0,
+       "label": "Deposit captured",
+       "reply": true
+      },
+      {
+       "from": 0,
+       "to": 3,
+       "label": "Reserve customs slot"
+      },
+      {
+       "from": 3,
+       "to": 0,
+       "label": "Fail: no slot before deadline",
+       "reply": true
+      },
+      {
+       "from": 0,
+       "to": 2,
+       "label": "Compensate: refund deposit"
+      },
+      {
+       "from": 0,
+       "to": 1,
+       "label": "Compensate: cancel B-55"
+      },
+      {
+       "from": 0,
+       "to": 0,
+       "label": "Escalate the case to a person"
+      }
+     ]
+    },
+    {
      "type": "framework",
      "title": "What to evaluate in agents",
      "items": [
@@ -3363,6 +4365,65 @@ TRACK.modules.push({
        "meaning": "Failed and retried attempts still cost money; this is the true unit cost."
       }
      ]
+    },
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "Consistency decays with repetition",
+     "caption": "Computed pass^k = p^k for independent attempts. An agent that succeeds 85% of the time handles the same task correctly eight times in a row only about 27% of the time; even 99% falls to about 92%.",
+     "labels": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8"
+     ],
+     "series": [
+      {
+       "name": "p = 0.85",
+       "values": [
+        85,
+        72.3,
+        61.4,
+        52.2,
+        44.4,
+        37.7,
+        32.1,
+        27.2
+       ]
+      },
+      {
+       "name": "p = 0.95",
+       "values": [
+        95,
+        90.3,
+        85.7,
+        81.5,
+        77.4,
+        73.5,
+        69.8,
+        66.3
+       ]
+      },
+      {
+       "name": "p = 0.99",
+       "values": [
+        99,
+        98.0,
+        97.0,
+        96.1,
+        95.1,
+        94.1,
+        93.2,
+        92.3
+       ]
+      }
+     ],
+     "unit": "%",
+     "yLabel": "pass^k by number of attempts k"
     },
     {
      "type": "callout",
@@ -3457,6 +4518,17 @@ TRACK.modules.push({
        "term": "Idempotency",
        "def": "The property that repeating an operation with the same key has the same effect as performing it once, making retries safe."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Agents fail by looping, misusing tools, cascading errors, hallucinating success, drifting and running up cost — contain each in layers.",
+      "Verify **state, not statements**: success means the target system actually changed as intended.",
+      "Prefer reversible operations and define compensating actions so failed multi-step processes can be unwound (saga pattern).",
+      "Evaluate trajectories as well as outcomes, inject faults, and run each task several times to measure consistency (pass^k).",
+      "Report cost per **verified** successful task, including failed and retried attempts."
      ]
     },
     {
@@ -3694,6 +4766,38 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "cycle",
+     "title": "The LLMOps evaluation loop",
+     "center": "Versioned eval sets",
+     "caption": "Offline gates and online signals feed the same evaluation datasets, so every escaped failure makes the next release safer. A judge-model upgrade travels round this loop like any other change.",
+     "items": [
+      {
+       "label": "Change an artefact",
+       "text": "Model, prompt, retrieval config, tool, guardrail or judge."
+      },
+      {
+       "label": "Gate in CI",
+       "text": "Assertions, golden set, judges, safety suite, performance."
+      },
+      {
+       "label": "Shadow and canary",
+       "text": "Real traffic, small blast radius, automatic rollback."
+      },
+      {
+       "label": "Observe production",
+       "text": "Traces, sampled quality scores, feedback, cost."
+      },
+      {
+       "label": "Triage failures",
+       "text": "Cluster, diagnose the failing stage, prioritise."
+      },
+      {
+       "label": "Grow the eval sets",
+       "text": "Add failures with corrected expectations."
+      }
+     ]
+    },
+    {
      "type": "callout",
      "kind": "warning",
      "text": "Judge models show **position bias** (favouring the first answer), **verbosity bias** (favouring longer answers), **self-preference** (favouring text like their own) and sensitivity to vague rubrics. Mitigate with precise rubrics and worked examples, pairwise comparisons in both orders, a pinned judge version, regular calibration against human labels, and human review for high-stakes decisions.",
@@ -3800,6 +4904,16 @@ TRACK.modules.push({
        "term": "LLM-as-judge",
        "def": "Using a language model with a rubric to score or compare outputs; scalable but biased, so it must be calibrated against human judgement."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Behaviour changes when models, prompts, retrieval settings, tools, guardrails or data change — version all of them as an AI bill of materials.",
+      "Pin hosted models (and judges) to immutable versions; every upgrade is a release.",
+      "Gate releases with layered evaluations — assertions, golden set, model-graded, safety, performance — on the **worst important slice**, not the average.",
+      "LLM judges carry position, verbosity and self-preference biases: use precise rubrics, swapped-order comparisons and human calibration."
      ]
     },
     {
@@ -3992,7 +5106,7 @@ TRACK.modules.push({
       {
        "name": "KV cache per token",
        "expr": "`2 × layers × KV heads × head dimension × bytes per value`",
-       "meaning": "Example: 80 layers, 8 KV heads, head dimension 128, 2 bytes → about 0.33 MB per token, so one 8,000-token sequence needs roughly 2.7 GB."
+       "meaning": "Example: 80 layers, 8 KV heads, head dimension 128, 2 bytes → about 0.33 MB per token, so one 8,000-token sequence needs roughly 2.6 GB."
       },
       {
        "name": "Little's law",
@@ -4000,6 +5114,35 @@ TRACK.modules.push({
        "meaning": "At 20 requests per second and 6 s average latency, about 120 requests are in flight and need KV-cache room."
       }
      ]
+    },
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "KV cache for one sequence grows with context",
+     "caption": "Computed with the example above (about 0.33 MB per token): a single 128,000-token sequence needs about 42 GB of cache — a third of the 140 GB that the 16-bit weights themselves occupy. Long contexts and high concurrency are memory problems first.",
+     "labels": [
+      "4K",
+      "8K",
+      "16K",
+      "32K",
+      "64K",
+      "128K"
+     ],
+     "series": [
+      {
+       "name": "KV cache",
+       "values": [
+        1.31,
+        2.62,
+        5.24,
+        10.49,
+        20.97,
+        41.94
+       ]
+      }
+     ],
+     "unit": " GB",
+     "yLabel": "Cache per sequence by context length"
     },
     {
      "type": "compare",
@@ -4136,6 +5279,16 @@ TRACK.modules.push({
        "term": "KV cache",
        "def": "Stored attention keys and values for already-processed tokens; it speeds generation but consumes accelerator memory in proportion to context length and concurrency."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Shadow for zero-impact validation, canary for limited blast radius, blue-green for instant switch-back, A/B for business impact — and stub side effects when shadowing agents.",
+      "Prefill sets time to first token; decode is limited by memory bandwidth — and the KV cache often caps concurrency.",
+      "Continuous batching and paged KV-cache management are the baseline for efficient self-hosted serving.",
+      "Autoscale on queue depth, TTFT and KV-cache use, not accelerator utilisation, and keep a warm pool for predictable ramps."
      ]
     },
     {
@@ -4341,32 +5494,64 @@ TRACK.modules.push({
      ]
     },
     {
-     "type": "flow",
+     "type": "sequence",
      "title": "A resilient model call",
-     "items": [
+     "caption": "Retries happen at one layer only, with backoff and a budget; once the circuit breaker opens, traffic goes straight to a tested fallback instead of hammering the failing provider. The degraded flag lets monitoring separate fallback answers from normal ones.",
+     "actors": [
+      "Application",
+      "AI gateway",
+      "Primary model",
+      "Fallback model"
+     ],
+     "steps": [
       {
-       "label": "Gateway",
-       "text": "quota and auth check"
+       "from": 0,
+       "to": 1,
+       "label": "Request (quota and auth OK)"
       },
       {
-       "label": "Primary call",
-       "text": "with timeouts"
+       "from": 1,
+       "to": 2,
+       "label": "Call with 2 s first-token timeout"
       },
       {
-       "label": "Retry",
-       "text": "transient errors, budgeted, with jitter"
+       "from": 2,
+       "to": 1,
+       "label": "Timeout",
+       "reply": true
       },
       {
-       "label": "Circuit open?",
-       "text": "route to fallback model"
+       "from": 1,
+       "to": 2,
+       "label": "One retry after backoff + jitter"
       },
       {
-       "label": "Fallback fails",
-       "text": "cached or static answer, or human handoff"
+       "from": 2,
+       "to": 1,
+       "label": "Error 503",
+       "reply": true
       },
       {
-       "label": "Record",
-       "text": "outcome and degraded flag"
+       "from": 1,
+       "to": 1,
+       "label": "Error threshold hit: breaker opens"
+      },
+      {
+       "from": 1,
+       "to": 3,
+       "label": "Route to tested fallback"
+      },
+      {
+       "from": 3,
+       "to": 1,
+       "label": "Answer",
+       "reply": true
+      },
+      {
+       "from": 1,
+       "to": 0,
+       "label": "Answer + degraded flag",
+       "reply": true
       }
      ]
     },
@@ -4458,6 +5643,16 @@ TRACK.modules.push({
        "term": "Speculative decoding",
        "def": "Speeding up generation by letting a small draft model propose tokens that a larger model verifies in parallel."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Measure every term of end-to-end latency in traces; output length is often the biggest and cheapest to cut.",
+      "Stream to make perceived latency ≈ TTFT; cache, route, parallelise and precompute for real latency.",
+      "Retry only idempotent operations, at one layer, with backoff, jitter and a budget — retries multiply across layers.",
+      "Circuit breakers, bulkheads, quotas and load shedding keep a degraded service working; every fallback needs its own evaluation."
      ]
     },
     {
@@ -4583,38 +5778,45 @@ TRACK.modules.push({
      ]
     },
     {
-     "type": "flow",
+     "type": "tree",
      "title": "A traced request — the span tree",
-     "items": [
-      {
-       "label": "Root span",
-       "text": "chat request, user and session IDs"
-      },
-      {
-       "label": "Retrieval span",
-       "text": "query, document IDs, scores"
-      },
-      {
-       "label": "Rerank span",
-       "text": "kept IDs and scores"
-      },
-      {
-       "label": "Model span",
-       "text": "model version, tokens in and out, latency, finish reason"
-      },
-      {
-       "label": "Tool spans",
-       "text": "tool, arguments, result status"
-      },
-      {
-       "label": "Guardrail span",
-       "text": "checks run and decisions"
-      },
-      {
-       "label": "Response",
-       "text": "final status and cost"
-      }
-     ]
+     "caption": "Each span carries its own timing and attributes, so a slow or wrong answer can be traced to the exact step: a weak retrieval, a tool error or a guardrail block. Model and prompt versions on the model span make regressions attributable.",
+     "root": {
+      "label": "chat.request",
+      "text": "user, session, total cost",
+      "children": [
+       {
+        "label": "retrieval",
+        "text": "query, doc IDs",
+        "children": [
+         {
+          "label": "keyword.search"
+         },
+         {
+          "label": "vector.search"
+         }
+        ]
+       },
+       {
+        "label": "rerank",
+        "text": "kept IDs, scores"
+       },
+       {
+        "label": "model.call",
+        "text": "model + prompt version, tokens",
+        "children": [
+         {
+          "label": "tool: get_order",
+          "text": "args, status"
+         }
+        ]
+       },
+       {
+        "label": "guardrail.output",
+        "text": "checks, decision"
+       }
+      ]
+     }
     },
     {
      "type": "callout",
@@ -4740,6 +5942,51 @@ TRACK.modules.push({
      "rows": 6
     },
     {
+     "type": "chart",
+     "kind": "line",
+     "title": "A retrieval regression that dashboards miss",
+     "caption": "Illustrative weekly averages: after the index rebuild in week 6, top retrieval similarity drops and abstentions rise while latency and error rates stay flat. Quality signals, not uptime signals, reveal it.",
+     "labels": [
+      "W1",
+      "W2",
+      "W3",
+      "W4",
+      "W5",
+      "W6",
+      "W7",
+      "W8"
+     ],
+     "series": [
+      {
+       "name": "Top similarity × 100",
+       "values": [
+        82,
+        81,
+        82,
+        80,
+        81,
+        71,
+        70,
+        69
+       ]
+      },
+      {
+       "name": "Abstention rate %",
+       "values": [
+        4,
+        4,
+        5,
+        4,
+        4,
+        13,
+        14,
+        15
+       ]
+      }
+     ],
+     "yLabel": "Weekly average"
+    },
+    {
      "type": "scenario",
      "title": "Healthy dashboards, unhappy users",
      "situation": "After an overnight rebuild of the retrieval index, latency is normal and errors are at 0.1%, but customer satisfaction for the assistant has fallen 8 points in a week.",
@@ -4793,6 +6040,17 @@ TRACK.modules.push({
        "term": "Drift",
        "def": "A change over time in the distribution of inputs, retrieved content or outputs that can silently degrade quality."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "AI observability must show whether the system is **right**, not only whether it is up.",
+      "Trace every request as a span tree with model, prompt and index versions, tokens, cost, tools and guardrail decisions, using open telemetry conventions.",
+      "Watch drift in inputs, retrieval and outputs, sample online quality scores, and capture implicit feedback linked to trace IDs.",
+      "Logs are sensitive data: redact, restrict, retain briefly and sample.",
+      "Close the loop: every fixed production failure joins the golden set."
      ]
     },
     {
@@ -4919,6 +6177,45 @@ TRACK.modules.push({
        "meaning": "A 20-turn chat adding 150 tokens per turn sends 31,500 input tokens in total, versus 3,000 if each turn were sent alone. Summarise or window the history."
       }
      ]
+    },
+    {
+     "type": "chart",
+     "kind": "line",
+     "title": "Resending history grows cost quadratically",
+     "caption": "Computed total input tokens for a chat that adds 150 tokens per turn: resending the full history reaches 69,750 tokens by turn 30, against 4,500 if each turn were sent alone. Summaries and windows keep the curve close to linear.",
+     "labels": [
+      "5",
+      "10",
+      "15",
+      "20",
+      "25",
+      "30"
+     ],
+     "series": [
+      {
+       "name": "Full history resent",
+       "values": [
+        2250,
+        8250,
+        18000,
+        31500,
+        48750,
+        69750
+       ]
+      },
+      {
+       "name": "Each turn alone",
+       "values": [
+        750,
+        1500,
+        2250,
+        3000,
+        3750,
+        4500
+       ]
+      }
+     ],
+     "yLabel": "Total input tokens by number of turns"
     },
     {
      "type": "table",
@@ -5105,6 +6402,44 @@ TRACK.modules.push({
      "rows": 6
     },
     {
+     "type": "matrix",
+     "title": "API or self-hosting?",
+     "caption": "Self-hosting pays only in the top-right — high volume that is steady enough to keep accelerators busy — and only on full cost of ownership with quality parity. Everywhere else, optimise the API bill first.",
+     "x": "Request volume",
+     "y": "Steadiness of load",
+     "quadrants": [
+      {
+       "title": "Managed API",
+       "items": [
+        "Predictable but small",
+        "Fixed capacity would idle"
+       ]
+      },
+      {
+       "title": "Self-host candidate",
+       "items": [
+        "High, steady volume",
+        "Model full TCO and quality parity"
+       ]
+      },
+      {
+       "title": "Managed API, pay per use",
+       "items": [
+        "Small and spiky",
+        "No capacity to manage"
+       ]
+      },
+      {
+       "title": "API + batch, or hybrid",
+       "items": [
+        "Large but bursty",
+        "Batch discounts for offline work",
+        "Small self-hosted base load"
+       ]
+      }
+     ]
+    },
+    {
      "type": "scenario",
      "title": "Should we self-host?",
      "situation": "A finance director asks whether the company should move from a hosted model API to self-hosting an open-weight model to cut a 90,000-a-month bill. What should the architect do FIRST?",
@@ -5150,6 +6485,17 @@ TRACK.modules.push({
        "term": "Model routing",
        "def": "Directing each request to the cheapest model expected to handle it well, escalating to stronger models only when needed."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Every request has a usage-based price; design choices — history, top-k, agent steps, output length — move it by orders of magnitude.",
+      "Estimate cost per request, per month and per **successful outcome** before building, including retries, fallbacks and judge calls.",
+      "The biggest levers are routing, caching, trimming context, constraining output, batching and specialised small models.",
+      "Enforce guardrails in real time at the gateway — quotas, task budgets, anomaly alerts and graceful degradation — not on the monthly invoice.",
+      "Self-host only when volume is high and steady, on full cost of ownership with quality parity."
      ]
     },
     {
@@ -5286,6 +6632,109 @@ TRACK.modules.push({
      "title": "Every token source is an input"
     },
     {
+     "type": "topology",
+     "title": "Where untrusted text enters — and where it can lead",
+     "caption": "Red links are attack paths: instructions planted in a web page or an uploaded file reach the model as ordinary context, and the damage depends on what the assistant can do next — here, read customer data and send email. Bound the tools, not just the text.",
+     "nodes": [
+      {
+       "id": "att",
+       "kind": "attacker",
+       "label": "Attacker",
+       "sub": "plants instructions",
+       "x": 1,
+       "y": 0
+      },
+      {
+       "id": "web",
+       "kind": "internet",
+       "label": "Web page",
+       "sub": "fetched by a tool",
+       "x": 3,
+       "y": 0
+      },
+      {
+       "id": "doc",
+       "kind": "doc",
+       "label": "Uploaded file",
+       "sub": "hidden text",
+       "x": 0,
+       "y": 2.5
+      },
+      {
+       "id": "app",
+       "kind": "model",
+       "label": "Assistant",
+       "sub": "model + orchestrator",
+       "x": 3,
+       "y": 3
+      },
+      {
+       "id": "db",
+       "kind": "db",
+       "label": "Customer data",
+       "sub": "read via tool",
+       "x": 6,
+       "y": 1.5
+      },
+      {
+       "id": "mail",
+       "kind": "api",
+       "label": "Email tool",
+       "sub": "send and forward",
+       "x": 6,
+       "y": 4.5
+      },
+      {
+       "id": "u",
+       "kind": "user",
+       "label": "User",
+       "sub": "direct injection too",
+       "x": 3,
+       "y": 6
+      }
+     ],
+     "links": [
+      {
+       "a": "att",
+       "b": "web",
+       "style": "attack"
+      },
+      {
+       "a": "att",
+       "b": "doc",
+       "style": "attack"
+      },
+      {
+       "a": "web",
+       "b": "app",
+       "label": "tool result",
+       "style": "dashed"
+      },
+      {
+       "a": "doc",
+       "b": "app",
+       "label": "upload",
+       "style": "dashed"
+      },
+      {
+       "a": "u",
+       "b": "app",
+       "label": "prompt"
+      },
+      {
+       "a": "app",
+       "b": "db",
+       "label": "read"
+      },
+      {
+       "a": "app",
+       "b": "mail",
+       "label": "exfiltration",
+       "style": "attack"
+      }
+     ]
+    },
+    {
      "type": "table",
      "title": "LLM application risk themes (aligned with the OWASP Top 10 for LLM Applications)",
      "head": [
@@ -5354,7 +6803,7 @@ TRACK.modules.push({
     {
      "type": "callout",
      "kind": "warning",
-     "text": "The OWASP project revises its LLM list as attacks and architectures change; the 2025 edition, for example, added system prompt leakage and vector and embedding weaknesses and broadened earlier entries. Use the current edition as a checklist for coverage, not as the boundary of your threat model.",
+     "text": "The OWASP project revises its LLM list as attacks and architectures change; the 2025 edition, for example, added system prompt leakage and vector and embedding weaknesses and broadened earlier entries. Use the current edition as a checklist for coverage, not as the boundary of your threat model. The same project now publishes guidance focused on agentic applications, and public knowledge bases of adversary techniques against AI systems (such as MITRE ATLAS) help red teams plan realistic attacks.",
      "title": "The list evolves"
     },
     {
@@ -5442,6 +6891,84 @@ TRACK.modules.push({
      "kind": "definition",
      "text": "A design pattern in which a **privileged** model plans and calls tools but never reads untrusted content directly, while a **quarantined** model processes untrusted text and can only return constrained, structured values (for example, an extracted date or a category from a fixed list). Instructions hidden in the untrusted content cannot reach the component that holds the tools.",
      "title": "Privileged and quarantined models"
+    },
+    {
+     "type": "topology",
+     "title": "Privileged and quarantined models",
+     "caption": "Only the privileged model holds tools, and it never reads the untrusted email itself. The quarantined model can return only constrained values — a date, a category from a fixed list — so hidden instructions have no path to the tools.",
+     "nodes": [
+      {
+       "id": "tools",
+       "kind": "api",
+       "label": "Tools",
+       "sub": "send, search, book",
+       "x": 1,
+       "y": 0.5
+      },
+      {
+       "id": "priv",
+       "kind": "model",
+       "label": "Privileged model",
+       "sub": "plans, calls tools",
+       "x": 1,
+       "y": 3
+      },
+      {
+       "id": "u",
+       "kind": "user",
+       "label": "User",
+       "sub": "trusted request",
+       "x": 1,
+       "y": 5.5
+      },
+      {
+       "id": "quar",
+       "kind": "model",
+       "label": "Quarantined model",
+       "sub": "no tools, no memory",
+       "x": 4,
+       "y": 3
+      },
+      {
+       "id": "mail",
+       "kind": "doc",
+       "label": "Untrusted email",
+       "sub": "may carry instructions",
+       "x": 6,
+       "y": 3
+      }
+     ],
+     "links": [
+      {
+       "a": "u",
+       "b": "priv"
+      },
+      {
+       "a": "priv",
+       "b": "tools"
+      },
+      {
+       "a": "priv",
+       "b": "quar",
+       "label": "typed values only",
+       "style": "dashed"
+      },
+      {
+       "a": "quar",
+       "b": "mail",
+       "label": "reads"
+      }
+     ],
+     "zones": [
+      {
+       "label": "Untrusted content zone",
+       "x": 4,
+       "y": 3,
+       "w": 3,
+       "h": 1,
+       "tone": "bad"
+      }
+     ]
     },
     {
      "type": "scenario",
@@ -5532,6 +7059,17 @@ TRACK.modules.push({
        "term": "Red teaming",
        "def": "Structured adversarial testing in which people or tools deliberately try to make an AI system fail, leak or misbehave."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Instructions and data share one channel: every token source — user, file, page, tool result, memory, other agents — is an input to threat-model.",
+      "Cover the current LLM risk themes (direct and indirect injection, output handling, poisoning, disclosure, supply chain, excessive agency, unbounded consumption), but do not stop at the list.",
+      "Prompts, classifiers and delimiters help; **architectural controls** — least privilege, approvals, egress limits, privileged/quarantined separation — bound the damage.",
+      "Treat model output as untrusted input to browsers, shells, SQL and APIs.",
+      "Revisit the threat model whenever tools, data sources, models or autonomy change, and red-team indirect paths."
      ]
     },
     {
@@ -5664,32 +7202,58 @@ TRACK.modules.push({
      "title": "Deletion must reach derived data"
     },
     {
-     "type": "flow",
+     "type": "sequence",
      "title": "A privacy-preserving request path",
-     "items": [
+     "caption": "The model only ever sees placeholders; the mapping to real values stays in a token vault inside your boundary and is used just for authorised display. Logs keep the redacted form with a retention limit.",
+     "actors": [
+      "Application",
+      "Redaction service",
+      "Model",
+      "Token vault"
+     ],
+     "steps": [
       {
-       "label": "Input",
-       "text": "user request"
+       "from": 0,
+       "to": 1,
+       "label": "Message with name, phone, account"
       },
       {
-       "label": "Detect and redact",
-       "text": "replace identifiers with tokens"
+       "from": 1,
+       "to": 3,
+       "label": "Store placeholder ↔ value map"
       },
       {
-       "label": "Model call",
-       "text": "pseudonymised context"
+       "from": 1,
+       "to": 0,
+       "label": "Text with PERSON_1, PHONE_1",
+       "reply": true
       },
       {
-       "label": "Output scan",
-       "text": "check for sensitive data"
+       "from": 0,
+       "to": 2,
+       "label": "Pseudonymised prompt"
       },
       {
-       "label": "Re-identify",
-       "text": "only for authorised display"
+       "from": 2,
+       "to": 0,
+       "label": "Draft with placeholders",
+       "reply": true
       },
       {
-       "label": "Log",
-       "text": "redacted, retention-limited"
+       "from": 0,
+       "to": 0,
+       "label": "Scan output for sensitive data"
+      },
+      {
+       "from": 0,
+       "to": 3,
+       "label": "Re-identify for authorised display"
+      },
+      {
+       "from": 3,
+       "to": 0,
+       "label": "Values for this session only",
+       "reply": true
       }
      ]
     },
@@ -5905,6 +7469,17 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Privacy and responsible AI are design constraints, like latency and cost — decided in the architecture, not after it.",
+      "Minimise and pseudonymise before model calls and logging; deletion must reach embeddings, caches, memory, eval sets and logs.",
+      "Test bias by slice and with counterfactual pairs, watch for proxies, and agree acceptable gaps before testing.",
+      "Fairness metrics can conflict; choose with stakeholders and document the trade-off.",
+      "Document with model cards, datasheets and system cards, and keep humans accountable for consequential decisions."
+     ]
+    },
+    {
      "type": "quiz",
      "items": [
       {
@@ -6025,9 +7600,10 @@ TRACK.modules.push({
       {
        "label": "General-purpose AI models (parallel track)",
        "parts": [
-        "Documentation and information for downstream providers",
-        "Copyright policy and a training-content summary",
-        "Additional duties for models with systemic risk"
+        "Technical documentation and information for downstream providers",
+        "Copyright policy and a public training-content summary",
+        "Systemic-risk models (presumed above 10²⁵ training FLOPs): evaluations, incident reporting, cybersecurity",
+        "A voluntary code of practice helps providers show compliance"
        ]
       }
      ]
@@ -6073,8 +7649,45 @@ TRACK.modules.push({
     {
      "type": "callout",
      "kind": "insight",
-     "text": "The Act entered into force in 2024 and its obligations apply in stages: prohibitions first, then duties for general-purpose AI models, then most high-risk requirements, with proposals to adjust some timelines under discussion. Track the official schedule — but logging, documentation, oversight and evaluation are good engineering whatever the date, and expensive to retrofit.",
-     "title": "Phased obligations — design for them now"
+     "title": "Phased obligations — design for them now",
+     "text": "The Act entered into force on 1 August 2024 and applies in stages. Prohibitions and AI-literacy duties have applied since February 2025, and obligations for **general-purpose AI model providers** since 2 August 2025. Most remaining provisions, including high-risk requirements for listed use cases and transparency duties, were scheduled for August 2026, with high-risk AI inside regulated products following in August 2027. In late 2025 the European Commission proposed a 'digital omnibus' that would postpone some high-risk deadlines until supporting standards are ready — **check the official timetable in force for your system**. Logging, documentation, oversight and evaluation are good engineering whatever the date, and expensive to retrofit."
+    },
+    {
+     "type": "timeline",
+     "title": "EU AI Act — how obligations phase in",
+     "caption": "Dates as set in the Act; the late-2025 proposal to delay some high-risk deadlines means you must confirm the current timetable with legal counsel. Most architecture controls take longer to build than the gaps between these dates.",
+     "items": [
+      {
+       "when": "Aug 2024",
+       "label": "Entry into force",
+       "text": "The regulation is published and the clock starts."
+      },
+      {
+       "when": "Feb 2025",
+       "label": "Prohibitions apply",
+       "text": "Banned practices stop; AI-literacy duties begin."
+      },
+      {
+       "when": "Aug 2025",
+       "label": "General-purpose models",
+       "text": "Provider duties for GPAI models; governance and penalties regime."
+      },
+      {
+       "when": "Nov 2025",
+       "label": "Postponement proposed",
+       "text": "Commission proposes delaying some high-risk dates."
+      },
+      {
+       "when": "Aug 2026",
+       "label": "Most remaining rules",
+       "text": "Scheduled date for listed high-risk uses and transparency duties."
+      },
+      {
+       "when": "Aug 2027",
+       "label": "Regulated products",
+       "text": "High-risk AI in regulated products; GPAI models placed before Aug 2025 must comply."
+      }
+     ]
     },
     {
      "type": "framework",
@@ -6105,7 +7718,7 @@ TRACK.modules.push({
     {
      "type": "callout",
      "kind": "example",
-     "text": "NIST publishes companion resources, including a profile for generative AI that maps risks such as confabulation, information integrity and data privacy to suggested actions under the four functions. Organisations can also write their own profiles for a sector or use case.",
+     "text": "NIST publishes companion resources, including the Generative AI Profile (NIST AI 600-1, 2024), which maps risks such as confabulation, information integrity, data privacy and harmful content to suggested actions under the four functions. Organisations can also write their own profiles for a sector or use case.",
      "title": "Profiles extend the framework"
     },
     {
@@ -6136,8 +7749,33 @@ TRACK.modules.push({
         "International standard for an AI management system",
         "Plan-do-check-act structure like other ISO management standards",
         "Certifiable by accredited bodies",
-        "Requires AI policy, risk and impact assessment, controls and continual improvement"
+        "Requires AI policy, risk and impact assessment, controls and continual improvement",
+        "Companion standards cover AI risk management guidance (ISO/IEC 23894) and AI system impact assessment (ISO/IEC 42005)"
        ]
+      }
+     ]
+    },
+    {
+     "type": "cycle",
+     "title": "An AI management system runs on Plan–Do–Check–Act",
+     "center": "ISO/IEC 42001",
+     "caption": "Certification audits look for this loop working in practice: risks assessed, controls operated, results reviewed and corrections made. Platform-generated evidence (Lesson 4) keeps the loop cheap to run.",
+     "items": [
+      {
+       "label": "Plan",
+       "text": "Context, scope, AI policy, risk and impact assessments, objectives."
+      },
+      {
+       "label": "Do",
+       "text": "Operate controls, document systems, train people."
+      },
+      {
+       "label": "Check",
+       "text": "Monitor, measure, internal audit, management review."
+      },
+      {
+       "label": "Act",
+       "text": "Handle nonconformities, take corrective action, improve."
       }
      ]
     },
@@ -6276,6 +7914,16 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Three instruments dominate: the binding **EU AI Act**, the voluntary **NIST AI RMF** (with its generative AI profile) and the certifiable **ISO/IEC 42001**.",
+      "Under the Act, risk tier follows **purpose and area of use**, not the interface; general-purpose model duties have applied since August 2025.",
+      "Obligations phase in and timetables can move — track the official schedule, but build logging, documentation, oversight and evaluation now.",
+      "Choose one backbone, crosswalk the rest, and deliver controls as platform features that generate evidence automatically."
+     ]
+    },
+    {
      "type": "quiz",
      "items": [
       {
@@ -6353,47 +8001,43 @@ TRACK.modules.push({
      "text": "Governance is **decision rights plus guardrails plus evidence**, scaled to risk. Done badly it is a committee that every project queues for; done well it is a set of paved roads that make the safe path the fastest one. The architect's role is to make governance executable — built into platforms, templates and pipelines."
     },
     {
-     "type": "layers",
+     "type": "tree",
      "title": "AI governance operating model",
-     "items": [
-      {
-       "label": "Board and executive",
-       "parts": [
-        "Risk appetite",
-        "Accountability for AI outcomes"
-       ]
-      },
-      {
-       "label": "AI governance council / review board",
-       "parts": [
-        "Policy ownership",
-        "High-risk approvals",
-        "Exceptions"
-       ]
-      },
-      {
-       "label": "Enablement: platform and centre of excellence",
-       "parts": [
-        "Standards and reference architectures",
-        "Reusable guardrails",
-        "Templates and training"
-       ]
-      },
-      {
-       "label": "Product teams (first line)",
-       "parts": [
-        "Build and operate systems",
-        "Own risks and produce evidence"
-       ]
-      },
-      {
-       "label": "Assurance (second and third lines)",
-       "parts": [
-        "Risk and compliance oversight",
-        "Internal audit"
-       ]
-      }
-     ]
+     "caption": "Accountability flows down from the board, while risk ownership sits with product teams in the first line. The platform and centre of excellence make the safe path easy; second- and third-line assurance check that it is followed.",
+     "root": {
+      "label": "Board and executive",
+      "text": "risk appetite, accountability",
+      "children": [
+       {
+        "label": "AI governance council",
+        "text": "policy, high-risk approvals"
+       },
+       {
+        "label": "Platform and CoE",
+        "text": "golden paths, guardrails, training"
+       },
+       {
+        "label": "Product teams",
+        "text": "first line",
+        "children": [
+         {
+          "label": "Build and operate"
+         },
+         {
+          "label": "Own risk and evidence"
+         }
+        ]
+       },
+       {
+        "label": "Risk and compliance",
+        "text": "second line"
+       },
+       {
+        "label": "Internal audit",
+        "text": "third line"
+       }
+      ]
+     }
     },
     {
      "type": "framework",
@@ -6646,6 +8290,16 @@ TRACK.modules.push({
      ]
     },
     {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "Governance is decision rights plus guardrails plus evidence, scaled to risk — paved roads, not queues.",
+      "Keep a live AI system inventory fed by the gateway, registries and pipelines, and use it to find shadow AI.",
+      "Match review depth to risk tier, and fast-track golden-path patterns.",
+      "AI incidents happen while systems are 'up': contain fast with kill switches and rollbacks, preserve traces and versions, then fix and add regression tests."
+     ]
+    },
+    {
      "type": "quiz",
      "items": [
       {
@@ -6826,36 +8480,196 @@ TRACK.modules.push({
      ]
     },
     {
-     "type": "flow",
+     "type": "topology",
+     "title": "Kestrel runtime topology",
+     "caption": "Every channel enters through one conversation service, and every model call passes the AI gateway, where authentication, redaction, quotas and cost attribution happen once. Account data reaches the assistant only through customer-scoped tool servers.",
+     "nodes": [
+      {
+       "id": "mod",
+       "kind": "model",
+       "label": "Model endpoints",
+       "sub": "small, frontier, fallback",
+       "x": 2,
+       "y": 0
+      },
+      {
+       "id": "obs",
+       "kind": "monitor",
+       "label": "Observability",
+       "sub": "traces, evals, cost",
+       "x": 0,
+       "y": 2
+      },
+      {
+       "id": "gw",
+       "kind": "gateway",
+       "label": "AI gateway",
+       "sub": "auth, redaction, quotas",
+       "x": 2,
+       "y": 2
+      },
+      {
+       "id": "ts",
+       "kind": "api",
+       "label": "Tool servers",
+       "sub": "billing, scheduling, CRM",
+       "x": 4.5,
+       "y": 2
+      },
+      {
+       "id": "conv",
+       "kind": "process",
+       "label": "Conversation svc",
+       "sub": "router, workflows, agent",
+       "x": 2,
+       "y": 4
+      },
+      {
+       "id": "ret",
+       "kind": "db",
+       "label": "Retrieval",
+       "sub": "tariffs, articles",
+       "x": 4.5,
+       "y": 4
+      },
+      {
+       "id": "cust",
+       "kind": "user",
+       "label": "Customer",
+       "sub": "web and app chat",
+       "x": 0,
+       "y": 6
+      },
+      {
+       "id": "desk",
+       "kind": "laptop",
+       "label": "Agent desktop",
+       "sub": "contact-centre staff",
+       "x": 2,
+       "y": 6
+      },
+      {
+       "id": "tab",
+       "kind": "phone",
+       "label": "Technician tablet",
+       "sub": "field visits",
+       "x": 4,
+       "y": 6
+      }
+     ],
+     "links": [
+      {
+       "a": "cust",
+       "b": "conv"
+      },
+      {
+       "a": "desk",
+       "b": "conv"
+      },
+      {
+       "a": "tab",
+       "b": "conv"
+      },
+      {
+       "a": "conv",
+       "b": "gw"
+      },
+      {
+       "a": "gw",
+       "b": "mod"
+      },
+      {
+       "a": "conv",
+       "b": "ts",
+       "label": "scoped calls"
+      },
+      {
+       "a": "conv",
+       "b": "ret",
+       "label": "hybrid search"
+      },
+      {
+       "a": "gw",
+       "b": "obs",
+       "style": "dashed"
+      }
+     ]
+    },
+    {
+     "type": "sequence",
      "title": "One request, end to end",
-     "items": [
+     "caption": "One message carries two intents: a grounded, cited bill explanation and a bounded scheduling task. The booking happens only after the customer confirms, with an idempotent tool call; every step lands on one trace.",
+     "actors": [
+      "Customer",
+      "AI gateway",
+      "Orchestrator",
+      "Scheduling agent",
+      "Billing tools"
+     ],
+     "steps": [
       {
-       "label": "Customer asks",
-       "text": "'Why did my bill double, and can someone check my meter?'"
+       "from": 0,
+       "to": 1,
+       "label": "Why did my bill double? Check meter?"
       },
       {
-       "label": "Gateway",
-       "text": "authenticate, redact, start trace"
+       "from": 1,
+       "to": 1,
+       "label": "Authenticate, redact, start trace"
       },
       {
-       "label": "Router",
-       "text": "billing explanation + scheduling intent"
+       "from": 1,
+       "to": 2,
+       "label": "Request + customer scope"
       },
       {
-       "label": "Grounded explanation",
-       "text": "tariff passages + account tool, cited"
+       "from": 2,
+       "to": 2,
+       "label": "Route: explain bill + schedule visit"
       },
       {
-       "label": "Scheduling agent",
-       "text": "offers slots; customer confirms"
+       "from": 2,
+       "to": 4,
+       "label": "Get bill lines (customer-scoped)"
       },
       {
-       "label": "Booking",
-       "text": "idempotent tool call, confirmation sent"
+       "from": 4,
+       "to": 2,
+       "label": "Usage up; new tariff band",
+       "reply": true
       },
       {
-       "label": "Record",
-       "text": "trace, cost, sampled quality evaluation"
+       "from": 2,
+       "to": 0,
+       "label": "Cited explanation of the bill",
+       "reply": true
+      },
+      {
+       "from": 2,
+       "to": 3,
+       "label": "Find technician slots"
+      },
+      {
+       "from": 3,
+       "to": 0,
+       "label": "Three slots offered",
+       "reply": true
+      },
+      {
+       "from": 0,
+       "to": 3,
+       "label": "Confirm Tuesday 10:00"
+      },
+      {
+       "from": 3,
+       "to": 3,
+       "label": "Idempotent booking"
+      },
+      {
+       "from": 3,
+       "to": 0,
+       "label": "Booking confirmed",
+       "reply": true
       }
      ]
     },
@@ -7062,6 +8876,16 @@ TRACK.modules.push({
        "term": "AI gateway",
        "def": "A shared control point between applications and models that handles authentication, quotas, routing, caching, redaction, tracing and cost attribution."
       }
+     ]
+    },
+    {
+     "type": "keypoints",
+     "title": "Key takeaways",
+     "items": [
+      "A defensible AI architecture makes one explicit decision per ZAIA layer and shows where each quality attribute is handled.",
+      "Route a model portfolio, ground answers with cited retrieval, and fetch personal data through customer-scoped tools instead of indexing it.",
+      "Grant agents autonomy only for bounded, confirmable actions, with limits enforced in code and humans for anything larger.",
+      "Defend every decision with the rejected alternative, the deciding measurement and a revisit trigger."
      ]
     },
     {
